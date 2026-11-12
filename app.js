@@ -52,7 +52,7 @@ button {
 });`
 };
 
-const STORAGE_KEY = "codebox_project_files_v1";
+const STORAGE_KEY = "pikaedit_project_files_v1";
 let files = loadSavedFiles();
 let activeFile = Object.keys(files)[0] || "index.html";
 let logCount = 0;
@@ -87,16 +87,107 @@ const consoleLogs = document.getElementById("consoleLogs");
 const consoleBadge = document.getElementById("consoleBadge");
 const clearConsoleBtn = document.getElementById("clearConsoleBtn");
 
+// Cozy Popup Elements
+const cozyModalOverlay = document.getElementById("cozyModalOverlay");
+const cozyIcon = document.getElementById("cozyIcon");
+const cozyTitle = document.getElementById("cozyTitle");
+const cozyMessage = document.getElementById("cozyMessage");
+const cozyInput = document.getElementById("cozyInput");
+const cozyCancelBtn = document.getElementById("cozyCancelBtn");
+const cozyConfirmBtn = document.getElementById("cozyConfirmBtn");
+
+// Custom Cozy Dialog Helper (replaces browser alert, confirm, prompt)
+function showCozyPopup({
+  title = "Notice",
+  message = "",
+  icon = "✨",
+  tone = "info",
+  mode = "alert",
+  placeholder = "",
+  confirmText = "OK",
+  cancelText = "Cancel"
+}) {
+  return new Promise((resolve) => {
+    cozyTitle.textContent = title;
+    cozyMessage.textContent = message;
+    cozyIcon.textContent = icon;
+    cozyIcon.className = `cozy-icon ${tone}`;
+
+    cozyConfirmBtn.textContent = confirmText;
+    cozyConfirmBtn.className = `cozy-btn confirm ${tone === "danger" ? "danger" : ""}`;
+    cozyCancelBtn.textContent = cancelText;
+
+    if (mode === "alert") {
+      cozyCancelBtn.classList.add("hidden");
+    } else {
+      cozyCancelBtn.classList.remove("hidden");
+    }
+
+    if (mode === "prompt") {
+      cozyInput.classList.remove("hidden");
+      cozyInput.value = "";
+      cozyInput.placeholder = placeholder;
+    } else {
+      cozyInput.classList.add("hidden");
+    }
+
+    cozyModalOverlay.classList.remove("hidden");
+
+    if (mode === "prompt") {
+      setTimeout(() => cozyInput.focus(), 40);
+    } else {
+      setTimeout(() => cozyConfirmBtn.focus(), 40);
+    }
+
+    const cleanup = (result) => {
+      cozyModalOverlay.classList.add("hidden");
+      cozyConfirmBtn.onclick = null;
+      cozyCancelBtn.onclick = null;
+      cozyModalOverlay.onclick = null;
+      cozyInput.onkeydown = null;
+      resolve(result);
+    };
+
+    cozyConfirmBtn.onclick = () => {
+      if (mode === "prompt") {
+        cleanup(cozyInput.value);
+      } else {
+        cleanup(true);
+      }
+    };
+
+    cozyCancelBtn.onclick = () => {
+      cleanup(mode === "prompt" ? null : false);
+    };
+
+    cozyModalOverlay.onclick = (e) => {
+      if (e.target === cozyModalOverlay) {
+        cleanup(mode === "prompt" ? null : false);
+      }
+    };
+
+    cozyInput.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        cleanup(cozyInput.value);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        cleanup(null);
+      }
+    };
+  });
+}
+
 // Load from localStorage or fallback to default
 function loadSavedFiles() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Object.keys(parsed).length > 0) return parsed;
     }
   } catch (e) {
-    console.warn("Could not load saved workspace:", e);
+    // Sandboxed preview or blocked storage: safely fallback to default files
   }
   return { ...DEFAULT_FILES };
 }
@@ -109,10 +200,23 @@ function saveFiles() {
   }
 }
 
+// Sort files keeping index.html, style.css, script.js first in clean order
+function getSortedFileNames() {
+  const priority = ["index.html", "style.css", "script.js"];
+  return Object.keys(files).sort((a, b) => {
+    const idxA = priority.indexOf(a);
+    const idxB = priority.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
+
 // Render File Explorer
 function renderFileList() {
   fileListEl.innerHTML = "";
-  const sortedNames = Object.keys(files).sort((a, b) => a.localeCompare(b));
+  const sortedNames = getSortedFileNames();
 
   sortedNames.forEach((fileName) => {
     const li = document.createElement("li");
@@ -166,25 +270,43 @@ function openFile(fileName) {
 }
 
 // Delete a File
-function deleteFile(fileName) {
+async function deleteFile(fileName) {
   if (Object.keys(files).length <= 1) {
-    alert("Kam se kam ek file project me honi chahiye.");
+    await showCozyPopup({
+      title: "Cannot Delete",
+      message: "At least one file must remain in the project.",
+      icon: "🌷",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "Got it"
+    });
     return;
   }
-  if (!confirm(`Delete "${fileName}"?`)) return;
+
+  const confirmed = await showCozyPopup({
+    title: "Delete File?",
+    message: `Are you sure you want to delete "${fileName}"?`,
+    icon: "🗑️",
+    tone: "danger",
+    mode: "confirm",
+    confirmText: "Delete",
+    cancelText: "Cancel"
+  });
+
+  if (!confirmed) return;
 
   delete files[fileName];
   saveFiles();
 
   if (activeFile === fileName) {
-    activeFile = Object.keys(files)[0];
+    activeFile = getSortedFileNames()[0];
   }
   openFile(activeFile);
 }
 
 // Update Line Numbers
 function updateLineNumbers() {
-  const lines = codeEditor.value.split("\n").length;
+  const lines = Math.max(1, codeEditor.value.split("\n").length);
   lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join("<br>");
 }
 
@@ -213,15 +335,33 @@ codeEditor.addEventListener("keydown", (e) => {
 });
 
 // Create New File
-newFileBtn.addEventListener("click", () => {
-  const name = prompt("Enter file name (e.g. about.html, app.js, css/main.css):");
+newFileBtn.addEventListener("click", async () => {
+  const name = await showCozyPopup({
+    title: "New File",
+    message: "Enter file name (e.g. index.html, style.css, script.js)",
+    icon: "📄",
+    tone: "info",
+    mode: "prompt",
+    placeholder: "e.g. index.html, style.css, script.js",
+    confirmText: "Create",
+    cancelText: "Cancel"
+  });
+
   if (!name) return;
   const cleanName = name.trim().replace(/^\/+/, "");
   if (!cleanName) return;
 
   if (cleanName in files) {
-    alert("Ye file pehle se exist karti hai!");
+    await showCozyPopup({
+      title: "Already Exists",
+      message: `"${cleanName}" is already in your project.`,
+      icon: "✨",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "Open File"
+    });
     openFile(cleanName);
+    closeMobileSidebar();
     return;
   }
 
@@ -231,10 +371,25 @@ newFileBtn.addEventListener("click", () => {
   closeMobileSidebar();
 });
 
-// Reset to Starter Project
-resetBtn.addEventListener("click", () => {
-  if (!confirm("Reset project to default template? Current changes will be cleared.")) return;
-  files = { ...DEFAULT_FILES };
+// Reset to Blank 3-File Workspace (index.html, style.css, script.js)
+resetBtn.addEventListener("click", async () => {
+  const confirmed = await showCozyPopup({
+    title: "Reset Workspace?",
+    message: "This will clear all files and leave empty index.html, style.css, and script.js.",
+    icon: "🧹",
+    tone: "danger",
+    mode: "confirm",
+    confirmText: "Reset",
+    cancelText: "Cancel"
+  });
+
+  if (!confirmed) return;
+
+  files = {
+    "index.html": "",
+    "style.css": "",
+    "script.js": ""
+  };
   saveFiles();
   openFile("index.html");
 });
@@ -256,7 +411,14 @@ zipInput.addEventListener("change", async (e) => {
     });
 
     if (validPaths.length === 0) {
-      alert("Is ZIP file me koi valid files nahi mili.");
+      await showCozyPopup({
+        title: "Empty ZIP",
+        message: "No valid files were found inside this ZIP archive.",
+        icon: "📦",
+        tone: "warn",
+        mode: "alert",
+        confirmText: "OK"
+      });
       return;
     }
 
@@ -288,17 +450,30 @@ zipInput.addEventListener("change", async (e) => {
     files = extracted;
     saveFiles();
 
-    // Open index.html if available, otherwise first HTML file, otherwise first file
-    const allKeys = Object.keys(files);
+    const allKeys = getSortedFileNames();
     const entryHtml =
       allKeys.find((k) => k.toLowerCase() === "index.html") ||
       allKeys.find((k) => k.toLowerCase().endsWith(".html")) ||
       allKeys[0];
 
     openFile(entryHtml);
-    alert(`ZIP imported! (${allKeys.length} files loaded)`);
+    await showCozyPopup({
+      title: "ZIP Imported",
+      message: `Successfully loaded ${allKeys.length} file${allKeys.length === 1 ? "" : "s"}.`,
+      icon: "🎉",
+      tone: "info",
+      mode: "alert",
+      confirmText: "Awesome"
+    });
   } catch (err) {
-    alert("ZIP read karne me error aaya: " + err.message);
+    await showCozyPopup({
+      title: "Import Error",
+      message: "Could not read ZIP file: " + err.message,
+      icon: "⚠️",
+      tone: "danger",
+      mode: "alert",
+      confirmText: "OK"
+    });
   } finally {
     zipInput.value = "";
   }
@@ -339,7 +514,7 @@ function resolvePath(baseFile, targetPath) {
   if (/^(https?:|data:|blob:|#|mailto:|tel:)/i.test(targetPath)) return null;
   const cleanTarget = targetPath.split("?")[0].split("#")[0];
   const baseParts = baseFile.split("/");
-  baseParts.pop(); // remove current file name
+  baseParts.pop();
 
   const targetParts = cleanTarget.split("/");
   for (const part of targetParts) {
@@ -354,17 +529,23 @@ function resolvePath(baseFile, targetPath) {
 }
 
 // Build & Run Project in Isolated Iframe
-function runProject() {
+async function runProject() {
   clearConsole();
 
-  // Decide which HTML file to run
   const targetHtmlFile = activeFile.toLowerCase().endsWith(".html")
     ? activeFile
     : Object.keys(files).find((k) => k.toLowerCase() === "index.html") ||
       Object.keys(files).find((k) => k.toLowerCase().endsWith(".html"));
 
   if (!targetHtmlFile) {
-    alert("Run karne ke liye project me kam se kam ek .html file honi chahiye!");
+    await showCozyPopup({
+      title: "No HTML File",
+      message: "Please create or select an .html file to run your project.",
+      icon: "📄",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
     return;
   }
 
@@ -405,10 +586,12 @@ function runProject() {
     (function() {
       const send = (type, args) => {
         try {
-          const formatted = Array.from(args).map(a =>
-            typeof a === 'object' ? JSON.stringify(a) : String(a)
-          ).join(' ');
-          window.parent.postMessage({ source: 'codebox-console', type, message: formatted }, '*');
+          const formatted = Array.from(args).map(a => {
+            if (a instanceof Error) return a.name + ': ' + a.message;
+            if (typeof a === 'object' && a !== null) return JSON.stringify(a);
+            return String(a);
+          }).join(' ');
+          window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
         } catch(e) {}
       };
       const origLog = console.log;
@@ -443,7 +626,7 @@ closePreviewBtn.addEventListener("click", () => {
 
 // Console Message Listener
 window.addEventListener("message", (event) => {
-  if (event.data && event.data.source === "codebox-console") {
+  if (event.data && event.data.source === "pikaedit-console") {
     appendConsoleLog(event.data.type, event.data.message);
   }
 });
