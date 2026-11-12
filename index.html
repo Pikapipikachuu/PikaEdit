@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#16181d" />
+  <title>CodeBox — Editor & ZIP Runner</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- JSZip Library for ZIP Import & Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="menuBtn" class="icon-btn" title="Files" aria-label="Toggle Files">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <span id="currentFileName" class="active-file">index.html</span>
+      </div>
+
+      <div class="topbar-right">
+        <label for="zipInput" class="action-btn secondary" title="Import ZIP">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span>ZIP</span>
+        </label>
+        <input type="file" id="zipInput" accept=".zip" hidden />
+
+        <button id="exportZipBtn" class="action-btn secondary" title="Download Edited ZIP">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Save</span>
+        </button>
+
+        <button id="runBtn" class="action-btn primary" title="Run Project">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Run</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- File Explorer Sidebar -->
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <span>PROJECT FILES</span>
+          <div class="sidebar-actions">
+            <button id="newFileBtn" class="small-btn" title="New File">+ File</button>
+            <button id="resetBtn" class="small-btn danger" title="Reset Project">Reset</button>
+          </div>
+        </div>
+        <ul id="fileList" class="file-list"></ul>
+      </aside>
+
+      <!-- Backdrop for Mobile Sidebar -->
+      <div id="sidebarBackdrop" class="backdrop"></div>
+
+      <!-- Code Editor Area -->
+      <main class="editor-wrapper">
+        <div id="lineNumbers" class="line-numbers">1</div>
+        <textarea
+          id="codeEditor"
+          class="code-editor"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="Write your code here..."
+        ></textarea>
+        <div id="imagePreviewBox" class="image-preview-box hidden">
+          <img id="assetImage" src="" alt="Asset Preview" />
+          <p id="assetInfo"></p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Live Runner & Console Modal -->
+  <div id="previewModal" class="preview-modal hidden">
+    <div class="preview-topbar">
+      <div class="preview-left">
+        <button id="closePreviewBtn" class="icon-btn" title="Back to Editor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
+        <span id="previewTitle" class="preview-title">Live Output</span>
+      </div>
+      <div class="preview-right">
+        <button id="consoleToggleBtn" class="action-btn secondary">
+          Console <span id="consoleBadge" class="badge">0</span>
+        </button>
+        <button id="reloadPreviewBtn" class="icon-btn" title="Reload">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
+
+    <!-- Built-in Console Drawer -->
+    <div id="consolePanel" class="console-panel hidden">
+      <div class="console-header">
+        <span>CONSOLE LOGS</span>
+        <button id="clearConsoleBtn" class="small-btn">Clear</button>
+      </div>
+      <div id="consoleLogs" class="console-logs"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
