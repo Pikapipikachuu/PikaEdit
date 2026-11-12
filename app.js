@@ -87,6 +87,49 @@ const consoleLogs = document.getElementById("consoleLogs");
 const consoleBadge = document.getElementById("consoleBadge");
 const clearConsoleBtn = document.getElementById("clearConsoleBtn");
 
+// Ensure Cozy Popup DOM & Styles exist even if index.html/style.css wasn't updated yet
+function ensureCozyPopupReady() {
+  if (!document.getElementById("cozyFallbackStyles")) {
+    const st = document.createElement("style");
+    st.id = "cozyFallbackStyles";
+    st.textContent = `
+      .cozy-overlay{position:fixed;inset:0;background:rgba(11,13,17,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+      .cozy-overlay.hidden,.cozy-input.hidden,.cozy-btn.hidden{display:none!important}
+      .cozy-card{width:min(84vw,276px);background:#20232c;border:1px solid #323746;border-radius:20px;padding:18px 16px 15px;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.55);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+      .cozy-icon{width:38px;height:38px;margin:0 auto 10px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(16,185,129,.15)}
+      .cozy-icon.danger{background:rgba(244,63,94,.15)}
+      .cozy-icon.warn{background:rgba(251,191,36,.15)}
+      .cozy-title{font-size:14.5px;font-weight:700;color:#f3f4f6;margin:0 0 5px}
+      .cozy-message{font-size:12.5px;line-height:1.45;color:#9ca3af;margin:0 0 14px;word-break:break-word}
+      .cozy-input{width:100%;box-sizing:border-box;background:#15171e;border:1px solid #353b4b;border-radius:11px;padding:9px 11px;color:#f3f4f6;font-size:12.5px;outline:none;margin-bottom:14px}
+      .cozy-actions{display:flex;gap:8px}
+      .cozy-btn{flex:1;padding:8px 12px;border-radius:11px;font-size:12.5px;font-weight:600;border:none;cursor:pointer}
+      .cozy-btn.cancel{background:#2b303c;color:#cbd5e1}
+      .cozy-btn.confirm{background:#10b981;color:#052e16}
+      .cozy-btn.confirm.danger{background:#fb7185;color:#2b0710}
+    `;
+    document.head.appendChild(st);
+  }
+  if (!document.getElementById("cozyModalOverlay")) {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+      <div id="cozyModalOverlay" class="cozy-overlay hidden" role="dialog" aria-modal="true">
+        <div class="cozy-card">
+          <div id="cozyIcon" class="cozy-icon info">✨</div>
+          <h3 id="cozyTitle" class="cozy-title">Notice</h3>
+          <p id="cozyMessage" class="cozy-message"></p>
+          <input type="text" id="cozyInput" class="cozy-input hidden" spellcheck="false" autocapitalize="off" autocomplete="off" />
+          <div class="cozy-actions">
+            <button id="cozyCancelBtn" class="cozy-btn cancel">Cancel</button>
+            <button id="cozyConfirmBtn" class="cozy-btn confirm">OK</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap.firstElementChild);
+  }
+}
+ensureCozyPopupReady();
+
 // Cozy Popup Elements
 const cozyModalOverlay = document.getElementById("cozyModalOverlay");
 const cozyIcon = document.getElementById("cozyIcon");
