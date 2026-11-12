@@ -712,3 +712,5 @@ sidebarBackdrop.addEventListener("click", closeMobileSidebar);
 // Initialize App
 openFile(activeFile);
 
+
+
