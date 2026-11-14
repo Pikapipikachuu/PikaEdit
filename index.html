@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#16181d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>PikaEdit — Code Editor & ZIP Runner</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./style.css" />
+  <!-- JSZip Library for ZIP Import & Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Brand Header: Logo on LEFT of PikaEdit + WhatsApp-style Triple Dot on RIGHT -->
+    <header class="brandbar">
+      <div class="brand-left">
+        <img src="./icon-192.png" alt="PikaEdit Logo" class="brand-logo" />
+        <span class="brand-name">PikaEdit</span>
+      </div>
+
+      <div class="brand-right">
+        <button id="moreMenuBtn" class="dots-btn" title="More options" aria-label="More options" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="12" cy="19" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Editor Action Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="menuBtn" class="icon-btn" title="Files & Folders" aria-label="Toggle Files">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <span id="currentFileName" class="active-file" title="Tap to rename file">index.html</span>
+      </div>
+
+      <div class="topbar-right">
+        <button id="exportZipBtn" class="action-btn secondary" title="Download Project ZIP">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Save</span>
+        </button>
+
+        <button id="runBtn" class="action-btn primary" title="Run Project">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Run</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- WhatsApp-Style Triple-Dot Dropdown Menu -->
+    <div id="waDropdown" class="wa-dropdown hidden" role="menu">
+      <button id="menuFullscreenBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">⛶</span>
+        <span class="wa-item-label">Full Screen</span>
+      </button>
+      <button id="menuSymbolBarBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">⌨️</span>
+        <span class="wa-item-label">Quick Symbol Bar</span>
+        <span id="symbolBarState" class="wa-item-badge">OFF</span>
+      </button>
+      <button id="menuWordWrapBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">↩️</span>
+        <span class="wa-item-label">Word Wrap</span>
+        <span id="wordWrapState" class="wa-item-badge">OFF</span>
+      </button>
+      <button id="menuFindBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">🔍</span>
+        <span class="wa-item-label">Find in File</span>
+      </button>
+      <div class="wa-divider"></div>
+      <button id="menuSaveZipBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">📦</span>
+        <span class="wa-item-label">Export Project ZIP</span>
+      </button>
+      <button id="menuResetBtn" class="wa-menu-item danger" role="menuitem">
+        <span class="wa-item-icon">🧹</span>
+        <span class="wa-item-label">Reset Workspace</span>
+      </button>
+    </div>
+
+    <!-- Hidden Inputs for Folder ZIP Import & Multi-File Upload -->
+    <input type="file" id="zipInput" accept=".zip,application/zip,application/x-zip-compressed,*/*" hidden />
+    <input type="file" id="assetUploadInput" multiple hidden />
+
+    <!-- Optional Quick Find Strip -->
+    <div id="findBar" class="find-bar hidden">
+      <input type="text" id="findInput" class="find-input" placeholder="Find text in current file..." spellcheck="false" />
+      <span id="findCount" class="find-count">0/0</span>
+      <button id="findPrevBtn" class="small-btn" title="Previous">↑</button>
+      <button id="findNextBtn" class="small-btn" title="Next">↓</button>
+      <button id="closeFindBtn" class="small-btn danger" title="Close">✕</button>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- File & Folder Explorer Sidebar -->
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <span>EXPLORER</span>
+          <div class="sidebar-actions">
+            <button id="newFileBtn" class="small-btn" title="New File">+ File</button>
+            <button id="newFolderBtn" class="small-btn" title="New Folder">+ Folder</button>
+            <button id="resetBtn" class="small-btn danger" title="Reset Project">Reset</button>
+          </div>
+        </div>
+        <div id="fileTree" class="file-tree"></div>
+      </aside>
+
+      <!-- Backdrop for Mobile Sidebar -->
+      <div id="sidebarBackdrop" class="backdrop"></div>
+
+      <!-- Code Editor Area -->
+      <main class="editor-wrapper">
+        <div id="lineNumbers" class="line-numbers">1</div>
+        <textarea
+          id="codeEditor"
+          class="code-editor"
+          spellcheck="false"
+          autocapitalize="off"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="Write your code here..."
+        ></textarea>
+        <div id="assetPreviewBox" class="image-preview-box hidden">
+          <img id="assetImage" class="hidden" src="" alt="Asset Preview" />
+          <audio id="assetAudio" class="hidden" controls></audio>
+          <p id="assetInfo"></p>
+        </div>
+      </main>
+    </div>
+
+    <!-- Optional Mobile Quick Symbol Bar -->
+    <div id="symbolBar" class="symbol-bar hidden">
+      <button type="button" class="sym-key" data-insert="  ">Tab</button>
+      <button type="button" class="sym-key" data-insert="<">&lt;</button>
+      <button type="button" class="sym-key" data-insert=">">&gt;</button>
+      <button type="button" class="sym-key" data-insert="/">/</button>
+      <button type="button" class="sym-key" data-insert="{">{</button>
+      <button type="button" class="sym-key" data-insert="}">}</button>
+      <button type="button" class="sym-key" data-insert="(">(</button>
+      <button type="button" class="sym-key" data-insert=")">)</button>
+      <button type="button" class="sym-key" data-insert=";">;</button>
+      <button type="button" class="sym-key" data-insert="=">=</button>
+      <button type="button" class="sym-key" data-insert='"'>"</button>
+      <button type="button" class="sym-key" data-insert="'">'</button>
+    </div>
+  </div>
+
+  <!-- Live Runner & Console Modal -->
+  <div id="previewModal" class="preview-modal hidden">
+    <div class="preview-topbar">
+      <div class="preview-left">
+        <button id="closePreviewBtn" class="icon-btn" title="Back to Editor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
+        <span id="previewTitle" class="preview-title">Live Output</span>
+      </div>
+      <div class="preview-right">
+        <button id="consoleToggleBtn" class="action-btn secondary">
+          Console <span id="consoleBadge" class="badge">0</span>
+        </button>
+        <button id="reloadPreviewBtn" class="icon-btn" title="Reload">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </button>
+        <button id="previewFullscreenBtn" class="icon-btn" title="Full Screen App Mode">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
+
+    <!-- Built-in Console Drawer -->
+    <div id="consolePanel" class="console-panel hidden">
+      <div class="console-header">
+        <span>CONSOLE LOGS</span>
+        <button id="clearConsoleBtn" class="small-btn">Clear</button>
+      </div>
+      <div id="consoleLogs" class="console-logs"></div>
+    </div>
+  </div>
+
+  <!-- Single Floating Exit Button shown ONLY during Full Screen Mode -->
+  <button id="exitFullscreenBtn" class="exit-fs-pill hidden" title="Exit Full Screen">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+      <polyline points="4 14 10 14 10 20"></polyline>
+      <polyline points="20 10 14 10 14 4"></polyline>
+      <line x1="14" y1="10" x2="21" y2="3"></line>
+      <line x1="3" y1="21" x2="10" y2="14"></line>
+    </svg>
+    <span>Exit</span>
+  </button>
+
+  <!-- Folder '+' Bottom Action Sheet -->
+  <div id="folderSheetOverlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-folder-badge">
+          <span>📂</span>
+          <span id="sheetFolderTitle">Folder</span>
+        </div>
+        <button id="closeSheetBtn" class="sheet-close-btn" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="sheet-options">
+        <button id="sheetNewFileBtn" class="sheet-option">
+          <span class="sheet-opt-icon green">📄</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">New File</span>
+            <span class="sheet-opt-sub">Create HTML, CSS, or JS file inside</span>
+          </div>
+        </button>
+
+        <button id="sheetNewFolderBtn" class="sheet-option">
+          <span class="sheet-opt-icon blue">📁</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">New Subfolder</span>
+            <span class="sheet-opt-sub">Create a nested folder (e.g. css, images)</span>
+          </div>
+        </button>
+
+        <button id="sheetImportZipBtn" class="sheet-option">
+          <span class="sheet-opt-icon amber">📦</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Import ZIP Here</span>
+            <span class="sheet-opt-sub">Extract a .zip project into this folder</span>
+          </div>
+        </button>
+
+        <button id="sheetUploadFilesBtn" class="sheet-option">
+          <span class="sheet-opt-icon purple">📎</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Upload Files</span>
+            <span class="sheet-opt-sub">Add images, audio, or code files</span>
+          </div>
+        </button>
+
+        <button id="sheetExportZipBtn" class="sheet-option">
+          <span class="sheet-opt-icon teal">⬇️</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Export Folder as ZIP</span>
+            <span class="sheet-opt-sub">Download only this folder as .zip</span>
+          </div>
+        </button>
+
+        <button id="sheetRenameFolderBtn" class="sheet-option">
+          <span class="sheet-opt-icon gray">✏️</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Rename Folder</span>
+            <span class="sheet-opt-sub">Change folder name</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cozy Cute Compact Popup Modal -->
+  <div id="cozyModalOverlay" class="cozy-overlay hidden" role="dialog" aria-modal="true">
+    <div class="cozy-card">
+      <div id="cozyIcon" class="cozy-icon info">✨</div>
+      <h3 id="cozyTitle" class="cozy-title">Notice</h3>
+      <p id="cozyMessage" class="cozy-message"></p>
+      <input
+        type="text"
+        id="cozyInput"
+        class="cozy-input hidden"
+        placeholder="e.g. index.html, style.css, script.js"
+        spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+      />
+      <div class="cozy-actions">
+        <button id="cozyCancelBtn" class="cozy-btn cancel">Cancel</button>
+        <button id="cozyConfirmBtn" class="cozy-btn confirm">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
