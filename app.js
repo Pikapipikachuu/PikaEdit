@@ -11,7 +11,7 @@ const DEFAULT_FILES = {
 <body>
   <div class="card">
     <h1>Hello Pika Boy! 🚀</h1>
-    <p>Create a folder in Explorer and tap + to add files or import a .zip project.</p>
+    <p>Switch files from the top pills, or open Explorer to import a .zip project.</p>
     <button id="clickBtn">Test JS Click</button>
   </div>
   <script src="script.js"></script>
@@ -19,7 +19,7 @@ const DEFAULT_FILES = {
 </html>`,
   "style.css": `body {
   font-family: system-ui, sans-serif;
-  background: #0f172a;
+  background: #0f1322;
   color: #f8fafc;
   display: flex;
   justify-content: center;
@@ -29,21 +29,22 @@ const DEFAULT_FILES = {
 }
 
 .card {
-  background: #1e293b;
+  background: #1a2035;
   padding: 28px;
-  border-radius: 14px;
+  border-radius: 16px;
   text-align: center;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  border: 1px solid #2d3654;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
 button {
   margin-top: 14px;
-  padding: 10px 18px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #10b981;
-  color: #052e16;
-  font-weight: bold;
+  color: #042419;
+  font-weight: 700;
   cursor: pointer;
 }`,
   "script.js": `document.getElementById("clickBtn").addEventListener("click", () => {
@@ -139,7 +140,7 @@ let pendingUploadFolder = "";
 
 let saveTimer = null;
 function saveWorkspace() {
-  // Debounce rapid typing saves while still saving immediately on actions
+  if (saveStatusLabel) saveStatusLabel.textContent = "Saving...";
   clearTimeout(saveTimer);
   saveTimer = setTimeout(persistNow, 180);
 }
@@ -148,17 +149,26 @@ async function persistNow() {
   await idbSet("files", files);
   await idbSet("folders", emptyFolders);
   await idbSet("activeFile", activeFile);
+
+  // Skip localStorage fallback if project is >1.5MB so mobile UI never stutters
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
-    window.localStorage.setItem(FOLDERS_KEY, JSON.stringify(emptyFolders));
-    window.localStorage.setItem(ACTIVE_KEY, activeFile);
-  } catch (e) {
-    // IndexedDB already saved full data even if localStorage 5MB quota is exceeded
-  }
+    let approxSize = 0;
+    for (const val of Object.values(files)) {
+      approxSize += typeof val === "string" ? val.length : 0;
+      if (approxSize > 1500000) break;
+    }
+    if (approxSize <= 1500000) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
+      window.localStorage.setItem(FOLDERS_KEY, JSON.stringify(emptyFolders));
+      window.localStorage.setItem(ACTIVE_KEY, activeFile);
+    }
+  } catch (e) {}
+
+  if (saveStatusLabel) saveStatusLabel.textContent = "Saved ✓";
 }
 
 // =========================================================================
-// 2. DISABLE MOBILE PULL-TO-REFRESH COMPLETELY
+// 2. DISABLE MOBILE PULL-TO-REFRESH & HANDLE KEYBOARD VIEWPORT
 // =========================================================================
 (function preventPullToRefresh() {
   let touchStartY = 0;
@@ -180,7 +190,6 @@ async function persistNow() {
       const isPullingDown = currentY > touchStartY;
       if (!isPullingDown) return;
 
-      // Check if any scrollable ancestor is scrolled down; if so, allow scrolling up
       let el = e.target;
       while (el && el !== document.body && el !== document.documentElement) {
         if (el.scrollHeight > el.clientHeight && el.scrollTop > 0) {
@@ -189,7 +198,6 @@ async function persistNow() {
         el = el.parentElement;
       }
 
-      // At top of page/container: block downward pull so browser never triggers refresh
       if (e.cancelable) {
         e.preventDefault();
       }
@@ -198,9 +206,22 @@ async function persistNow() {
   );
 })();
 
+// Keep symbol bar cleanly above soft keyboard on mobile
+if (window.visualViewport) {
+  const syncViewportHeight = () => {
+    const appEl = document.getElementById("appContainer");
+    if (appEl) {
+      appEl.style.height = `${window.visualViewport.height}px`;
+    }
+  };
+  window.visualViewport.addEventListener("resize", syncViewportHeight);
+}
+
 // =========================================================================
 // DOM ELEMENTS
 // =========================================================================
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
 const moreMenuBtn = document.getElementById("moreMenuBtn");
 const waDropdown = document.getElementById("waDropdown");
 const menuFullscreenBtn = document.getElementById("menuFullscreenBtn");
@@ -209,10 +230,16 @@ const symbolBarState = document.getElementById("symbolBarState");
 const menuWordWrapBtn = document.getElementById("menuWordWrapBtn");
 const wordWrapState = document.getElementById("wordWrapState");
 const menuFindBtn = document.getElementById("menuFindBtn");
+const menuCopyAllBtn = document.getElementById("menuCopyAllBtn");
+const menuImportZipBtn = document.getElementById("menuImportZipBtn");
 const menuSaveZipBtn = document.getElementById("menuSaveZipBtn");
 const menuResetBtn = document.getElementById("menuResetBtn");
 const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
 const previewFullscreenBtn = document.getElementById("previewFullscreenBtn");
+
+const fileTabsBar = document.getElementById("fileTabsBar");
+const cursorPosLabel = document.getElementById("cursorPosLabel");
+const saveStatusLabel = document.getElementById("saveStatusLabel");
 
 const findBar = document.getElementById("findBar");
 const findInput = document.getElementById("findInput");
@@ -240,6 +267,8 @@ const exportZipBtn = document.getElementById("exportZipBtn");
 const newFileBtn = document.getElementById("newFileBtn");
 const newFolderBtn = document.getElementById("newFolderBtn");
 const resetBtn = document.getElementById("resetBtn");
+const rootImportZipBtn = document.getElementById("rootImportZipBtn");
+const rootUploadBtn = document.getElementById("rootUploadBtn");
 const runBtn = document.getElementById("runBtn");
 
 const previewModal = document.getElementById("previewModal");
@@ -266,7 +295,56 @@ const sheetExportZipBtn = document.getElementById("sheetExportZipBtn");
 const sheetRenameFolderBtn = document.getElementById("sheetRenameFolderBtn");
 
 // =========================================================================
-// 3. WHATSAPP-STYLE TRIPLE-DOT MENU & TRUE FULL SCREEN MODE
+// 3. UNDO / REDO HISTORY STACK PER FILE
+// =========================================================================
+const undoStack = {};
+const redoStack = {};
+let lastSnapshotTimer = null;
+
+function recordUndoSnapshot(filePath, value) {
+  if (!undoStack[filePath]) undoStack[filePath] = [];
+  const stack = undoStack[filePath];
+  if (stack.length === 0 || stack[stack.length - 1] !== value) {
+    stack.push(value);
+    if (stack.length > 60) stack.shift();
+  }
+}
+
+undoBtn.addEventListener("click", () => {
+  if (codeEditor.classList.contains("hidden")) return;
+  const stack = undoStack[activeFile] || [];
+  if (stack.length <= 1) return;
+
+  if (!redoStack[activeFile]) redoStack[activeFile] = [];
+  const current = stack.pop();
+  redoStack[activeFile].push(current);
+
+  const prev = stack[stack.length - 1];
+  codeEditor.value = prev;
+  files[activeFile] = prev;
+  saveWorkspace();
+  updateLineNumbers(true);
+  updateCursorStatus();
+});
+
+redoBtn.addEventListener("click", () => {
+  if (codeEditor.classList.contains("hidden")) return;
+  const rStack = redoStack[activeFile] || [];
+  if (rStack.length === 0) return;
+
+  const next = rStack.pop();
+  if (!undoStack[activeFile]) undoStack[activeFile] = [];
+  undoStack[activeFile].push(next);
+
+  codeEditor.value = next;
+  files[activeFile] = next;
+  saveWorkspace();
+  updateLineNumbers(true);
+  updateCursorStatus();
+});
+
+// =========================================================================
+// 4. WHATSAPP-STYLE TRIPLE-DOT MENU & TRUE FULL SCREEN MODE
 // =========================================================================
 function toggleWaDropdown(forceState) {
   const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
@@ -285,7 +363,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Enter / Exit Pure Full Screen Mode
 function enterAppFullscreen() {
   toggleWaDropdown(false);
   closeMobileSidebar();
@@ -338,7 +415,7 @@ menuSymbolBarBtn.addEventListener("click", () => {
 
 symbolBar.addEventListener("click", (e) => {
   const btn = e.target.closest(".sym-key");
-  if (!btn) return;
+  if (!btn || codeEditor.classList.contains("hidden")) return;
   const text = btn.getAttribute("data-insert") || "";
   const start = codeEditor.selectionStart;
   const end = codeEditor.selectionEnd;
@@ -346,15 +423,20 @@ symbolBar.addEventListener("click", (e) => {
   codeEditor.selectionStart = codeEditor.selectionEnd = start + text.length;
   codeEditor.focus();
   files[activeFile] = codeEditor.value;
+  recordUndoSnapshot(activeFile, codeEditor.value);
   saveWorkspace();
   updateLineNumbers();
+  updateCursorStatus();
 });
 
-// Toggle Word Wrap
+// Toggle Word Wrap (and hide lineNumbers while wrapped so numbers never misalign)
 menuWordWrapBtn.addEventListener("click", () => {
   const wrapped = codeEditor.classList.toggle("word-wrap");
   wordWrapState.textContent = wrapped ? "ON" : "OFF";
   wordWrapState.classList.toggle("on", wrapped);
+  if (!codeEditor.classList.contains("hidden")) {
+    lineNumbers.classList.toggle("hidden", wrapped);
+  }
   toggleWaDropdown(false);
 });
 
@@ -405,13 +487,44 @@ function runFindSearch(step = 0) {
   const matchPos = findMatches[findIndex];
   codeEditor.focus();
   codeEditor.setSelectionRange(matchPos, matchPos + query.length);
+  updateCursorStatus();
 }
 
 findInput.addEventListener("input", () => runFindSearch(0));
 findNextBtn.addEventListener("click", () => runFindSearch(1));
 findPrevBtn.addEventListener("click", () => runFindSearch(-1));
 
-// Export & Reset from Dropdown
+// Copy All Code
+menuCopyAllBtn.addEventListener("click", async () => {
+  toggleWaDropdown(false);
+  if (codeEditor.classList.contains("hidden")) return;
+  try {
+    await navigator.clipboard.writeText(codeEditor.value);
+    saveStatusLabel.textContent = "Copied ✓";
+    setTimeout(() => { saveStatusLabel.textContent = "Saved ✓"; }, 1400);
+  } catch (e) {
+    codeEditor.select();
+    document.execCommand("copy");
+  }
+});
+
+// Root Import / Export / Reset from Dropdown & Explorer
+menuImportZipBtn.addEventListener("click", () => {
+  toggleWaDropdown(false);
+  pendingUploadFolder = "";
+  zipInput.click();
+});
+
+rootImportZipBtn.addEventListener("click", () => {
+  pendingUploadFolder = "";
+  zipInput.click();
+});
+
+rootUploadBtn.addEventListener("click", () => {
+  pendingUploadFolder = "";
+  assetUploadInput.click();
+});
+
 menuSaveZipBtn.addEventListener("click", () => {
   toggleWaDropdown(false);
   exportZipBtn.click();
@@ -514,9 +627,51 @@ function showCozyPopup({
   });
 }
 
+async function ensureJSZip() {
+  if (typeof window.JSZip !== "undefined") return true;
+  await showCozyPopup({
+    title: "JSZip Offline",
+    message: "ZIP engine is still loading or offline. Connect once to cache it.",
+    icon: "📦",
+    tone: "warn",
+    mode: "alert",
+    confirmText: "OK"
+  });
+  return false;
+}
+
 // =========================================================================
-// FOLDER & FILE TREE EXPLORER
+// QUICK OPEN FILE TABS & FOLDER TREE EXPLORER
 // =========================================================================
+function renderQuickTabs() {
+  if (!fileTabsBar) return;
+  fileTabsBar.innerHTML = "";
+
+  const priority = ["index.html", "style.css", "script.js"];
+  const allPaths = Object.keys(files).sort((a, b) => {
+    const baseA = a.split("/").pop();
+    const baseB = b.split("/").pop();
+    const idxA = priority.indexOf(baseA);
+    const idxB = priority.indexOf(baseB);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  // Show up to 12 files in quick tabs for effortless 1-tap switching
+  for (const path of allPaths.slice(0, 12)) {
+    const baseName = path.split("/").pop();
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = `file-tab-pill ${path === activeFile ? "active" : ""}`;
+    pill.innerHTML = `<span>${getFileIcon(baseName)}</span><span>${baseName}</span>`;
+    pill.title = path;
+    pill.onclick = () => openFile(path);
+    fileTabsBar.appendChild(pill);
+  }
+}
+
 function expandParentsOf(filePath) {
   if (!filePath || !filePath.includes("/")) return;
   const parts = filePath.split("/");
@@ -725,6 +880,7 @@ function renderFileTree() {
   fileTreeEl.innerHTML = "";
   const tree = buildTreeStructure();
   fileTreeEl.appendChild(renderTreeNodes(tree, 0));
+  renderQuickTabs();
 }
 
 // =========================================================================
@@ -770,6 +926,7 @@ sheetUploadFilesBtn.addEventListener("click", () => {
 });
 
 sheetExportZipBtn.addEventListener("click", async () => {
+  if (!(await ensureJSZip())) return;
   const folder = sheetTargetFolder;
   closeFolderActionSheet();
 
@@ -908,6 +1065,8 @@ function openFile(fileName) {
   assetAudio.pause();
   assetAudio.src = "";
 
+  const isWrapped = codeEditor.classList.contains("word-wrap");
+
   if (typeof content === "string" && content.startsWith("data:image/")) {
     codeEditor.classList.add("hidden");
     lineNumbers.classList.add("hidden");
@@ -916,6 +1075,7 @@ function openFile(fileName) {
     assetAudio.classList.add("hidden");
     assetImage.src = content;
     assetInfo.textContent = `Image Asset: ${fileName}`;
+    cursorPosLabel.textContent = "Image Preview";
   } else if (typeof content === "string" && content.startsWith("data:audio/")) {
     codeEditor.classList.add("hidden");
     lineNumbers.classList.add("hidden");
@@ -924,6 +1084,7 @@ function openFile(fileName) {
     assetAudio.classList.remove("hidden");
     assetAudio.src = content;
     assetInfo.textContent = `Audio Asset: ${fileName}`;
+    cursorPosLabel.textContent = "Audio Preview";
   } else if (typeof content === "string" && content.startsWith("data:")) {
     codeEditor.classList.add("hidden");
     lineNumbers.classList.add("hidden");
@@ -931,12 +1092,15 @@ function openFile(fileName) {
     assetImage.classList.add("hidden");
     assetAudio.classList.add("hidden");
     assetInfo.textContent = `Binary Asset: ${fileName}`;
+    cursorPosLabel.textContent = "Binary File";
   } else {
     assetPreviewBox.classList.add("hidden");
     codeEditor.classList.remove("hidden");
-    lineNumbers.classList.remove("hidden");
+    lineNumbers.classList.toggle("hidden", isWrapped);
     codeEditor.value = content;
-    updateLineNumbers();
+    recordUndoSnapshot(fileName, content);
+    updateLineNumbers(true);
+    updateCursorStatus();
   }
 
   renderFileTree();
@@ -969,6 +1133,8 @@ async function deleteFile(fileName) {
   if (!confirmed) return;
 
   delete files[fileName];
+  delete undoStack[fileName];
+  delete redoStack[fileName];
   if (activeFile === fileName) {
     activeFile = findEntryHtml() || Object.keys(files)[0];
   }
@@ -1005,7 +1171,11 @@ async function deleteFolder(folderPath) {
 
   if (!confirmed) return;
 
-  for (const f of insideFiles) delete files[f];
+  for (const f of insideFiles) {
+    delete files[f];
+    delete undoStack[f];
+    delete redoStack[f];
+  }
   emptyFolders = emptyFolders.filter((f) => f !== folderPath && !f.startsWith(prefix));
   if (!(activeFile in files)) {
     activeFile = findEntryHtml() || Object.keys(files)[0];
@@ -1014,16 +1184,47 @@ async function deleteFolder(folderPath) {
   openFile(activeFile);
 }
 
-function updateLineNumbers() {
-  const lines = Math.max(1, codeEditor.value.split("\n").length);
-  lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => i + 1).join("<br>");
+let lastLineCount = 0;
+function updateLineNumbers(force = false) {
+  let count = 1;
+  const val = codeEditor.value;
+  for (let i = 0; i < val.length; i++) {
+    if (val.charCodeAt(i) === 10) count++;
+  }
+  if (!force && count === lastLineCount) return;
+  lastLineCount = count;
+
+  let out = "";
+  for (let i = 1; i <= count; i++) {
+    out += i === count ? String(i) : i + "\n";
+  }
+  lineNumbers.textContent = out;
+}
+
+function updateCursorStatus() {
+  if (!cursorPosLabel || codeEditor.classList.contains("hidden")) return;
+  const pos = codeEditor.selectionStart || 0;
+  const before = codeEditor.value.slice(0, pos);
+  const lines = before.split("\n");
+  const ln = lines.length;
+  const col = lines[lines.length - 1].length + 1;
+  cursorPosLabel.textContent = `Ln ${ln}, Col ${col}`;
 }
 
 codeEditor.addEventListener("input", () => {
   files[activeFile] = codeEditor.value;
   saveWorkspace();
   updateLineNumbers();
+  updateCursorStatus();
+
+  clearTimeout(lastSnapshotTimer);
+  lastSnapshotTimer = setTimeout(() => {
+    recordUndoSnapshot(activeFile, codeEditor.value);
+  }, 450);
 });
+
+codeEditor.addEventListener("click", updateCursorStatus);
+codeEditor.addEventListener("keyup", updateCursorStatus);
 
 codeEditor.addEventListener("scroll", () => {
   lineNumbers.scrollTop = codeEditor.scrollTop;
@@ -1037,8 +1238,10 @@ codeEditor.addEventListener("keydown", (e) => {
     codeEditor.value = codeEditor.value.substring(0, start) + "  " + codeEditor.value.substring(end);
     codeEditor.selectionStart = codeEditor.selectionEnd = start + 2;
     files[activeFile] = codeEditor.value;
+    recordUndoSnapshot(activeFile, codeEditor.value);
     saveWorkspace();
     updateLineNumbers();
+    updateCursorStatus();
   }
 });
 
@@ -1187,12 +1390,17 @@ zipInput.addEventListener("change", async (e) => {
   pendingUploadFolder = "";
   if (!file) return;
 
+  if (!(await ensureJSZip())) {
+    zipInput.value = "";
+    return;
+  }
+
   try {
     const zip = await JSZip.loadAsync(file);
     const validPaths = [];
 
     zip.forEach((relativePath, entry) => {
-      const normalized = relativePath.replace(/\\/g, "/");
+      const normalized = relativePath.replace(/\/g, "/");
       if (!entry.dir && !normalized.startsWith("__MACOSX/") && !normalized.endsWith(".DS_Store")) {
         validPaths.push(normalized);
       }
@@ -1245,6 +1453,7 @@ zipInput.addEventListener("change", async (e) => {
     activeFile = entryHtml;
     await persistNow();
     openFile(entryHtml);
+    closeMobileSidebar();
 
     await showCozyPopup({
       title: "ZIP Imported",
@@ -1295,6 +1504,7 @@ assetUploadInput.addEventListener("change", async (e) => {
   if (lastAddedPath) activeFile = lastAddedPath;
   await persistNow();
   if (lastAddedPath) openFile(lastAddedPath);
+  closeMobileSidebar();
 
   await showCozyPopup({
     title: "Files Added",
@@ -1318,6 +1528,7 @@ function readFileAsDataURL(file) {
 }
 
 exportZipBtn.addEventListener("click", async () => {
+  if (!(await ensureJSZip())) return;
   const zip = new JSZip();
 
   for (const [path, content] of Object.entries(files)) {
@@ -1350,7 +1561,7 @@ function resolvePath(baseFile, targetPath) {
   const trimmed = targetPath.trim();
   if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
 
-  const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/");
+  const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\/g, "/");
   if (!cleanTarget) return null;
 
   const baseParts = baseFile.split("/");
@@ -1379,14 +1590,14 @@ function lookupAssetUrl(resolvedPath, assetMap) {
 }
 
 function rewriteCssContent(cssText, cssFilePath, assetMap) {
-  let rewritten = cssText.replace(/url\(\s*(['"]?)([^'"()]+)\1\s*\)/gi, (match, quote, rawUrl) => {
+  let rewritten = cssText.replace(/url\(\s*(['"]?)([^'"()]+)\s*\)/gi, (match, quote, rawUrl) => {
     const resolved = resolvePath(cssFilePath, rawUrl);
     const mapped = lookupAssetUrl(resolved, assetMap);
     if (mapped) return `url("${mapped}")`;
     return match;
   });
 
-  rewritten = rewritten.replace(/@import\s+(['"])([^'"]+)\1/gi, (match, quote, rawUrl) => {
+  rewritten = rewritten.replace(/@import\s+(['"])([^'"]+)/gi, (match, quote, rawUrl) => {
     const resolved = resolvePath(cssFilePath, rawUrl);
     const mapped = lookupAssetUrl(resolved, assetMap);
     if (mapped) return `@import "${mapped}"`;
@@ -1472,7 +1683,7 @@ async function runProject(overrideHtmlFile = null) {
   });
 
   htmlContent = htmlContent.replace(
-    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
+    /(src|href|poster|data)\s*=\s*(["'])([^"']+)/gi,
     (match, attr, quote, rawPath) => {
       const resolved = resolvePath(targetHtmlFile, rawPath);
       if (!resolved) return match;
@@ -1489,7 +1700,7 @@ async function runProject(overrideHtmlFile = null) {
     }
   );
 
-  htmlContent = htmlContent.replace(/\bsrcset\s*=\s*(["'])([^"']+)\1/gi, (match, quote, srcsetVal) => {
+  htmlContent = htmlContent.replace(/srcset\s*=\s*(["'])([^"']+)/gi, (match, quote, srcsetVal) => {
     const rewrittenSet = srcsetVal
       .split(",")
       .map((item) => {
@@ -1518,7 +1729,7 @@ async function runProject(overrideHtmlFile = null) {
         if (!raw || typeof raw !== 'string') return null;
         const trimmed = raw.trim();
         if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-        const clean = trimmed.split('?')[0].split('#')[0].replace(/\\/g, '/');
+        const clean = trimmed.split('?')[0].split('#')[0].replace(/\/g, '/');
         if (!clean) return null;
         const baseParts = VFS.baseFile.split('/');
         baseParts.pop();
@@ -1710,7 +1921,6 @@ sidebarBackdrop.addEventListener("click", closeMobileSidebar);
   if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
     files = savedFiles;
   } else {
-    // Migrate legacy localStorage data if available
     try {
       const legacyFolders = window.localStorage.getItem(FOLDERS_KEY);
       if (legacyFolders) emptyFolders = JSON.parse(legacyFolders);

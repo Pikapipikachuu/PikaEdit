@@ -2,13 +2,13 @@
   "id": "./",
   "name": "PikaEdit — Code Editor & ZIP Runner",
   "short_name": "PikaEdit",
-  "description": "Simple & clean HTML, CSS, JS code editor and ZIP runner.",
+  "description": "Cozy & fast HTML, CSS, JS code editor and ZIP runner.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#16181d",
-  "theme_color": "#16181d",
+  "background_color": "#11131c",
+  "theme_color": "#11131c",
   "icons": [
     {
       "src": "./icon-192.png",

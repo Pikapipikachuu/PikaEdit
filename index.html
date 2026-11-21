@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#16181d" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#11131c" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,8 +16,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Brand Header: Logo on LEFT of PikaEdit + WhatsApp-style Triple Dot on RIGHT -->
+  <div id="appContainer" class="app-container">
+    <!-- Brand Header: Logo on LEFT of PikaEdit + Quick Undo/Redo + Triple Dot on RIGHT -->
     <header class="brandbar">
       <div class="brand-left">
         <img src="./icon-192.png" alt="PikaEdit Logo" class="brand-logo" />
@@ -25,6 +25,18 @@
       </div>
 
       <div class="brand-right">
+        <button id="undoBtn" class="mini-tool-btn" title="Undo" aria-label="Undo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v6h6"></path>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+          </svg>
+        </button>
+        <button id="redoBtn" class="mini-tool-btn" title="Redo" aria-label="Redo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+          </svg>
+        </button>
         <button id="moreMenuBtn" class="dots-btn" title="More options" aria-label="More options" aria-expanded="false">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2"></circle>
@@ -39,7 +51,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <button id="menuBtn" class="icon-btn" title="Files & Folders" aria-label="Toggle Files">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -50,7 +62,7 @@
 
       <div class="topbar-right">
         <button id="exportZipBtn" class="action-btn secondary" title="Download Project ZIP">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -59,13 +71,16 @@
         </button>
 
         <button id="runBtn" class="action-btn primary" title="Run Project">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           <span>Run</span>
         </button>
       </div>
     </header>
+
+    <!-- Quick Open File Tabs Strip (1-Tap File Switching on Mobile) -->
+    <div id="fileTabsBar" class="file-tabs-bar" aria-label="Open files"></div>
 
     <!-- WhatsApp-Style Triple-Dot Dropdown Menu -->
     <div id="waDropdown" class="wa-dropdown hidden" role="menu">
@@ -76,7 +91,7 @@
       <button id="menuSymbolBarBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">⌨️</span>
         <span class="wa-item-label">Quick Symbol Bar</span>
-        <span id="symbolBarState" class="wa-item-badge">OFF</span>
+        <span id="symbolBarState" class="wa-item-badge on">ON</span>
       </button>
       <button id="menuWordWrapBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">↩️</span>
@@ -87,7 +102,15 @@
         <span class="wa-item-icon">🔍</span>
         <span class="wa-item-label">Find in File</span>
       </button>
+      <button id="menuCopyAllBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">📋</span>
+        <span class="wa-item-label">Copy All Code</span>
+      </button>
       <div class="wa-divider"></div>
+      <button id="menuImportZipBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">📥</span>
+        <span class="wa-item-label">Import Project ZIP</span>
+      </button>
       <button id="menuSaveZipBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">📦</span>
         <span class="wa-item-label">Export Project ZIP</span>
@@ -118,10 +141,19 @@
         <div class="sidebar-header">
           <span>EXPLORER</span>
           <div class="sidebar-actions">
-            <button id="newFileBtn" class="small-btn" title="New File">+ File</button>
+            <button id="newFileBtn" class="small-btn accent" title="New File">+ File</button>
             <button id="newFolderBtn" class="small-btn" title="New Folder">+ Folder</button>
             <button id="resetBtn" class="small-btn danger" title="Reset Project">Reset</button>
           </div>
+        </div>
+        <!-- 1-Tap Root Import & Upload Strip -->
+        <div class="sidebar-quick-bar">
+          <button id="rootImportZipBtn" class="quick-exp-btn" title="Import .zip into workspace">
+            <span>📦</span> Import ZIP
+          </button>
+          <button id="rootUploadBtn" class="quick-exp-btn" title="Upload images, audio, or code files">
+            <span>📎</span> Upload Files
+          </button>
         </div>
         <div id="fileTree" class="file-tree"></div>
       </aside>
@@ -149,9 +181,15 @@
       </main>
     </div>
 
-    <!-- Optional Mobile Quick Symbol Bar -->
-    <div id="symbolBar" class="symbol-bar hidden">
-      <button type="button" class="sym-key" data-insert="  ">Tab</button>
+    <!-- Compact Status Strip -->
+    <div class="status-strip">
+      <span id="cursorPosLabel">Ln 1, Col 1</span>
+      <span id="saveStatusLabel" class="save-pill">Saved ✓</span>
+    </div>
+
+    <!-- Mobile Quick Symbol Bar (ON by default for fast mobile coding) -->
+    <div id="symbolBar" class="symbol-bar">
+      <button type="button" class="sym-key tab-key" data-insert="  ">Tab</button>
       <button type="button" class="sym-key" data-insert="<">&lt;</button>
       <button type="button" class="sym-key" data-insert=">">&gt;</button>
       <button type="button" class="sym-key" data-insert="/">/</button>
@@ -159,8 +197,13 @@
       <button type="button" class="sym-key" data-insert="}">}</button>
       <button type="button" class="sym-key" data-insert="(">(</button>
       <button type="button" class="sym-key" data-insert=")">)</button>
+      <button type="button" class="sym-key" data-insert="[">[</button>
+      <button type="button" class="sym-key" data-insert="]">]</button>
       <button type="button" class="sym-key" data-insert=";">;</button>
+      <button type="button" class="sym-key" data-insert=":">:</button>
       <button type="button" class="sym-key" data-insert="=">=</button>
+      <button type="button" class="sym-key" data-insert="#">#</button>
+      <button type="button" class="sym-key" data-insert=".">.</button>
       <button type="button" class="sym-key" data-insert='"'>"</button>
       <button type="button" class="sym-key" data-insert="'">'</button>
     </div>
@@ -171,7 +214,7 @@
     <div class="preview-topbar">
       <div class="preview-left">
         <button id="closePreviewBtn" class="icon-btn" title="Back to Editor">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
           </svg>
@@ -183,13 +226,13 @@
           Console <span id="consoleBadge" class="badge">0</span>
         </button>
         <button id="reloadPreviewBtn" class="icon-btn" title="Reload">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="23 4 23 10 17 10"></polyline>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
           </svg>
         </button>
         <button id="previewFullscreenBtn" class="icon-btn" title="Full Screen App Mode">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <polyline points="15 3 21 3 21 9"></polyline>
             <polyline points="9 21 3 21 3 15"></polyline>
             <line x1="21" y1="3" x2="14" y2="10"></line>

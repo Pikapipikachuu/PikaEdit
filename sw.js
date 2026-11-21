@@ -1,5 +1,5 @@
-const CACHE_NAME = "pikaedit-cache-v4";
-const ASSETS = [
+const CACHE_NAME = "pikaedit-cache-v5";
+const LOCAL_ASSETS = [
   "./",
   "./index.html",
   "./style.css",
@@ -8,10 +8,20 @@ const ASSETS = [
   "./icon-192.png",
   "./icon-512.png"
 ];
+const CDN_ASSETS = [
+  "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(LOCAL_ASSETS);
+      for (const url of CDN_ASSETS) {
+        try {
+          await cache.add(url);
+        } catch (e) {}
+      }
+    })
   );
   self.skipWaiting();
 });
@@ -30,8 +40,10 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        if (response && (response.status === 200 || response.type === "opaque")) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
         return response;
       })
       .catch(() => caches.match(event.request))
