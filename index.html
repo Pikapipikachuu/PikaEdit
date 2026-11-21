@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#11131c" />
+  <meta name="theme-color" content="#141824" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -17,7 +17,7 @@
 </head>
 <body>
   <div id="appContainer" class="app-container">
-    <!-- Brand Header: Logo on LEFT of PikaEdit + Quick Undo/Redo + Triple Dot on RIGHT -->
+    <!-- Brand Header: Logo on LEFT of PikaEdit + Undo/Redo + Triple Dot on RIGHT -->
     <header class="brandbar">
       <div class="brand-left">
         <img src="./icon-192.png" alt="PikaEdit Logo" class="brand-logo" />
@@ -79,7 +79,7 @@
       </div>
     </header>
 
-    <!-- Quick Open File Tabs Strip (1-Tap File Switching on Mobile) -->
+    <!-- Quick Open File Tabs Strip (1-Tap File Switching) -->
     <div id="fileTabsBar" class="file-tabs-bar" aria-label="Open files"></div>
 
     <!-- WhatsApp-Style Triple-Dot Dropdown Menu -->
@@ -187,7 +187,7 @@
       <span id="saveStatusLabel" class="save-pill">Saved ✓</span>
     </div>
 
-    <!-- Mobile Quick Symbol Bar (ON by default for fast mobile coding) -->
+    <!-- Mobile Quick Symbol Bar -->
     <div id="symbolBar" class="symbol-bar">
       <button type="button" class="sym-key tab-key" data-insert="  ">Tab</button>
       <button type="button" class="sym-key" data-insert="<">&lt;</button>
@@ -197,15 +197,15 @@
       <button type="button" class="sym-key" data-insert="}">}</button>
       <button type="button" class="sym-key" data-insert="(">(</button>
       <button type="button" class="sym-key" data-insert=")">)</button>
-      <button type="button" class="sym-key" data-insert="[">[</button>
-      <button type="button" class="sym-key" data-insert="]">]</button>
       <button type="button" class="sym-key" data-insert=";">;</button>
-      <button type="button" class="sym-key" data-insert=":">:</button>
       <button type="button" class="sym-key" data-insert="=">=</button>
-      <button type="button" class="sym-key" data-insert="#">#</button>
-      <button type="button" class="sym-key" data-insert=".">.</button>
       <button type="button" class="sym-key" data-insert='"'>"</button>
       <button type="button" class="sym-key" data-insert="'">'</button>
+      <button type="button" class="sym-key" data-insert=":">:</button>
+      <button type="button" class="sym-key" data-insert="#">#</button>
+      <button type="button" class="sym-key" data-insert=".">.</button>
+      <button type="button" class="sym-key" data-insert="[">[</button>
+      <button type="button" class="sym-key" data-insert="]">]</button>
     </div>
   </div>
 

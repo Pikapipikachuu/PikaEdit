@@ -1,20 +1,20 @@
 :root {
-  /* Cozy Midnight Indigo + Pika Gold & Mint Palette */
-  --bg-deep: #0e1018;
-  --bg-dark: #131621;
-  --bg-panel: #191d2b;
-  --bg-elevated: #212638;
-  --bg-hover: #282e44;
-  --border: #2c3248;
-  --border-soft: #23283b;
-  --text-main: #eef1f8;
-  --text-muted: #8f98b2;
-  --pika-gold: #fbbf24;
-  --pika-gold-soft: rgba(251, 191, 36, 0.14);
+  /* Cozy Slate-Navy Palette matching PikaEdit <P> Icon */
+  --bg-deep: #10141e;
+  --bg-dark: #151a26;
+  --bg-panel: #1b2130;
+  --bg-elevated: #232a3d;
+  --bg-hover: #2c354c;
+  --border: #313b54;
+  --border-soft: #252d42;
+  --text-main: #eef2f9;
+  --text-muted: #939eb8;
+  --coral-accent: #fb926c;
+  --coral-soft: rgba(251, 146, 108, 0.16);
+  --sage-mint: #8bb49f;
   --mint: #10b981;
   --mint-bright: #34d399;
   --mint-soft: rgba(16, 185, 129, 0.16);
-  --accent: #60a5fa;
   --red: #fb7185;
   --font-mono: 'Fira Code', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -47,10 +47,10 @@ html, body {
   background: var(--bg-dark);
 }
 
-/* Brand Header: Cozy Midnight Indigo with Warm Pika Gold Accent */
+/* Brand Header: Clean Simple PikaEdit Text + Logo */
 .brandbar {
   height: 46px;
-  background: linear-gradient(180deg, #151824 0%, #121520 100%);
+  background: #141824;
   border-bottom: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
@@ -68,26 +68,22 @@ html, body {
 .brand-logo {
   width: 27px;
   height: 27px;
-  border-radius: 8px;
+  border-radius: 7px;
   object-fit: cover;
   flex-shrink: 0;
-  box-shadow: 0 2px 10px rgba(251, 191, 36, 0.22);
-  border: 1px solid rgba(251, 191, 36, 0.25);
 }
 
 .brand-name {
   font-size: 16.5px;
-  font-weight: 800;
-  letter-spacing: 0.25px;
-  background: linear-gradient(90deg, #fef3c7 0%, #fbbf24 55%, #34d399 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #f3f4f6;
 }
 
 .brand-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .mini-tool-btn {
@@ -96,18 +92,17 @@ html, body {
   color: var(--text-muted);
   width: 31px;
   height: 31px;
-  border-radius: 9px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .mini-tool-btn:hover, .mini-tool-btn:active {
   background: var(--bg-hover);
   color: var(--text-main);
-  transform: scale(0.95);
 }
 
 .dots-btn {
@@ -134,11 +129,11 @@ html, body {
   top: 44px;
   right: 10px;
   width: 222px;
-  background: #1d2130;
-  border: 1px solid #323952;
-  border-radius: 16px;
+  background: #1f2637;
+  border: 1px solid #35405b;
+  border-radius: 15px;
   padding: 6px;
-  box-shadow: 0 16px 36px rgba(5, 7, 14, 0.65);
+  box-shadow: 0 16px 36px rgba(5, 8, 16, 0.65);
   z-index: 120;
   transform-origin: top right;
   animation: waMenuIn 0.15s cubic-bezier(0.22, 1, 0.36, 1);
@@ -196,7 +191,7 @@ html, body {
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 6px;
-  background: #2b3248;
+  background: #2c354c;
   color: var(--text-muted);
 }
 
@@ -207,7 +202,7 @@ html, body {
 
 .wa-divider {
   height: 1px;
-  background: #2b3248;
+  background: #2e374f;
   margin: 4px 6px;
 }
 
@@ -231,11 +226,11 @@ body.app-fullscreen .preview-topbar {
   gap: 5px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(251, 191, 36, 0.28);
-  background: rgba(19, 22, 33, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(20, 24, 36, 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: #fef3c7;
+  color: #f8fafc;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -285,7 +280,7 @@ body.app-fullscreen .preview-topbar {
 
 .active-file:hover, .active-file:active {
   background: var(--bg-hover);
-  border-color: var(--pika-gold);
+  border-color: var(--coral-accent);
 }
 
 .icon-btn {
@@ -311,7 +306,7 @@ body.app-fullscreen .preview-topbar {
   align-items: center;
   gap: 5px;
   padding: 6px 12px;
-  border-radius: 9px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   border: 1px solid transparent;
@@ -335,14 +330,13 @@ body.app-fullscreen .preview-topbar {
 }
 
 .action-btn.primary {
-  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  background: var(--mint);
   color: #042419;
   font-weight: 700;
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.26);
 }
 
 .action-btn.primary:hover {
-  filter: brightness(1.06);
+  filter: brightness(1.07);
 }
 
 /* Quick Open File Tabs Strip */
@@ -350,8 +344,8 @@ body.app-fullscreen .preview-topbar {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
-  background: #141723;
+  padding: 6px 10px;
+  background: #161b28;
   border-bottom: 1px solid var(--border-soft);
   overflow-x: auto;
   flex-shrink: 0;
@@ -385,9 +379,9 @@ body.app-fullscreen .preview-topbar {
 }
 
 .file-tab-pill.active {
-  background: var(--pika-gold-soft);
-  color: #fde68a;
-  border-color: rgba(251, 191, 36, 0.38);
+  background: var(--coral-soft);
+  color: #ffc3ad;
+  border-color: rgba(251, 146, 108, 0.42);
   font-weight: 600;
 }
 
@@ -397,7 +391,7 @@ body.app-fullscreen .preview-topbar {
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  background: #171a26;
+  background: #181e2c;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -415,7 +409,7 @@ body.app-fullscreen .preview-topbar {
 }
 
 .find-input:focus {
-  border-color: var(--pika-gold);
+  border-color: var(--coral-accent);
 }
 
 .find-count {
@@ -466,7 +460,7 @@ body.app-fullscreen .preview-topbar {
   display: flex;
   gap: 6px;
   padding: 7px 8px;
-  background: #151824;
+  background: #161b28;
   border-bottom: 1px solid var(--border-soft);
 }
 
@@ -507,7 +501,7 @@ body.app-fullscreen .preview-topbar {
 .small-btn.accent {
   background: var(--mint-soft);
   color: var(--mint-bright);
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(16, 185, 129, 0.32);
 }
 
 .small-btn.danger:hover, .small-btn.danger:active {
@@ -544,13 +538,13 @@ body.app-fullscreen .preview-topbar {
 }
 
 .tree-row.active {
-  background: var(--pika-gold-soft);
-  color: #fde68a;
+  background: var(--coral-soft);
+  color: #ffc3ad;
   font-weight: 600;
 }
 
 .tree-row.folder-row {
-  color: #dbe2f4;
+  color: #dce3f5;
   font-weight: 600;
 }
 
@@ -628,7 +622,7 @@ body.app-fullscreen .preview-topbar {
   width: 42px;
   padding: 14px 6px;
   background: var(--bg-deep);
-  color: #535c78;
+  color: #586480;
   font-family: var(--font-mono);
   font-size: 13.5px;
   line-height: 1.58;
@@ -643,8 +637,8 @@ body.app-fullscreen .preview-topbar {
 .code-editor {
   flex: 1;
   background: var(--bg-dark);
-  color: #eef1f8;
-  caret-color: var(--pika-gold);
+  color: #eef2f9;
+  caret-color: var(--coral-accent);
   border: none;
   outline: none;
   resize: none;
@@ -659,13 +653,13 @@ body.app-fullscreen .preview-topbar {
 }
 
 .code-editor::selection {
-  background: rgba(251, 191, 36, 0.25);
+  background: rgba(251, 146, 108, 0.28);
 }
 
 .code-editor.word-wrap {
   white-space: pre-wrap;
   word-break: break-word;
-  border-left: 3px solid rgba(251, 191, 36, 0.35);
+  border-left: 3px solid rgba(251, 146, 108, 0.38);
 }
 
 .image-preview-box {
@@ -714,7 +708,7 @@ body.app-fullscreen .preview-topbar {
   align-items: center;
   gap: 5px;
   padding: 6px 8px;
-  background: #161926;
+  background: #171c29;
   border-top: 1px solid var(--border);
   overflow-x: auto;
   flex-shrink: 0;
@@ -728,9 +722,9 @@ body.app-fullscreen .preview-topbar {
 .sym-key {
   background: var(--bg-elevated);
   color: #f8fafc;
-  border: 1px solid #323952;
+  border: 1px solid #35405b;
   border-radius: 8px;
-  padding: 6px 11.5px;
+  padding: 6px 11px;
   font-family: var(--font-mono);
   font-size: 13.5px;
   font-weight: 600;
@@ -740,8 +734,8 @@ body.app-fullscreen .preview-topbar {
 }
 
 .sym-key.tab-key {
-  color: var(--pika-gold);
-  border-color: rgba(251, 191, 36, 0.3);
+  color: var(--coral-accent);
+  border-color: rgba(251, 146, 108, 0.35);
 }
 
 .sym-key:active {
@@ -796,8 +790,8 @@ body.app-fullscreen .preview-topbar {
 }
 
 .badge {
-  background: var(--pika-gold);
-  color: #1c1502;
+  background: var(--coral-accent);
+  color: #1f0a04;
   font-weight: 700;
   font-size: 11px;
   padding: 1px 6px;
@@ -836,7 +830,7 @@ body.app-fullscreen .preview-topbar {
 
 .log-line {
   padding: 4.5px 0;
-  border-bottom: 1px solid #1d2233;
+  border-bottom: 1px solid #1f2637;
   word-break: break-word;
 }
 
@@ -848,7 +842,7 @@ body.app-fullscreen .preview-topbar {
 .sheet-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 10, 18, 0.65);
+  background: rgba(8, 11, 18, 0.65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -860,10 +854,10 @@ body.app-fullscreen .preview-topbar {
 .bottom-sheet {
   width: 100%;
   max-width: 460px;
-  background: #1a1e2e;
-  border-top: 1px solid #323952;
-  border-left: 1px solid #2b3248;
-  border-right: 1px solid #2b3248;
+  background: #1c2232;
+  border-top: 1px solid #35405b;
+  border-left: 1px solid #2d364e;
+  border-right: 1px solid #2d364e;
   border-radius: 22px 22px 0 0;
   padding: 10px 14px calc(22px + env(safe-area-inset-bottom));
   box-shadow: 0 -14px 36px rgba(0, 0, 0, 0.55);
@@ -884,7 +878,7 @@ body.app-fullscreen .preview-topbar {
 .sheet-handle {
   width: 36px;
   height: 4px;
-  background: #3d4563;
+  background: #3f4b6b;
   border-radius: 99px;
   margin: 0 auto 10px;
 }
@@ -894,7 +888,7 @@ body.app-fullscreen .preview-topbar {
   align-items: center;
   justify-content: space-between;
   padding: 2px 4px 10px;
-  border-bottom: 1px solid #2b3248;
+  border-bottom: 1px solid #2d364e;
   margin-bottom: 8px;
 }
 
@@ -970,7 +964,7 @@ body.app-fullscreen .preview-topbar {
 
 .sheet-opt-icon.green { background: rgba(16, 185, 129, 0.16); }
 .sheet-opt-icon.blue { background: rgba(96, 165, 250, 0.16); }
-.sheet-opt-icon.amber { background: rgba(251, 191, 36, 0.16); }
+.sheet-opt-icon.amber { background: rgba(251, 146, 108, 0.16); }
 .sheet-opt-icon.purple { background: rgba(192, 132, 252, 0.16); }
 .sheet-opt-icon.teal { background: rgba(45, 212, 191, 0.16); }
 .sheet-opt-icon.gray { background: rgba(148, 163, 184, 0.16); }
@@ -996,7 +990,7 @@ body.app-fullscreen .preview-topbar {
 .cozy-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 10, 18, 0.68);
+  background: rgba(8, 11, 18, 0.68);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   display: flex;
@@ -1008,8 +1002,8 @@ body.app-fullscreen .preview-topbar {
 
 .cozy-card {
   width: min(85vw, 286px);
-  background: #1b2030;
-  border: 1px solid #323a54;
+  background: #1d2434;
+  border: 1px solid #35405b;
   border-radius: 22px;
   padding: 18px 16px 15px;
   text-align: center;
@@ -1050,8 +1044,8 @@ body.app-fullscreen .preview-topbar {
 }
 
 .cozy-icon.warn {
-  background: rgba(251, 191, 36, 0.16);
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 146, 108, 0.16);
+  border: 1px solid rgba(251, 146, 108, 0.3);
 }
 
 .cozy-title {
@@ -1072,7 +1066,7 @@ body.app-fullscreen .preview-topbar {
 .cozy-input {
   width: 100%;
   background: var(--bg-deep);
-  border: 1px solid #353e59;
+  border: 1px solid #384461;
   border-radius: 11px;
   padding: 9px 11px;
   color: var(--text-main);
@@ -1084,7 +1078,7 @@ body.app-fullscreen .preview-topbar {
 }
 
 .cozy-input:focus {
-  border-color: var(--pika-gold);
+  border-color: var(--coral-accent);
 }
 
 .cozy-actions {
@@ -1144,7 +1138,7 @@ body.app-fullscreen .preview-topbar {
     display: none;
     position: absolute;
     inset: 0;
-    background: rgba(6, 8, 15, 0.6);
+    background: rgba(6, 9, 16, 0.6);
     z-index: 15;
   }
 

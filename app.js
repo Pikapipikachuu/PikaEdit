@@ -19,7 +19,7 @@ const DEFAULT_FILES = {
 </html>`,
   "style.css": `body {
   font-family: system-ui, sans-serif;
-  background: #0f1322;
+  background: #10141e;
   color: #f8fafc;
   display: flex;
   justify-content: center;
@@ -29,11 +29,11 @@ const DEFAULT_FILES = {
 }
 
 .card {
-  background: #1a2035;
+  background: #1b2130;
   padding: 28px;
   border-radius: 16px;
   text-align: center;
-  border: 1px solid #2d3654;
+  border: 1px solid #313b54;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
 }
 
@@ -150,7 +150,6 @@ async function persistNow() {
   await idbSet("folders", emptyFolders);
   await idbSet("activeFile", activeFile);
 
-  // Skip localStorage fallback if project is >1.5MB so mobile UI never stutters
   try {
     let approxSize = 0;
     for (const val of Object.values(files)) {
@@ -206,7 +205,6 @@ async function persistNow() {
   );
 })();
 
-// Keep symbol bar cleanly above soft keyboard on mobile
 if (window.visualViewport) {
   const syncViewportHeight = () => {
     const appEl = document.getElementById("appContainer");
@@ -358,7 +356,7 @@ moreMenuBtn.addEventListener("click", (e) => {
 });
 
 document.addEventListener("click", (e) => {
-  if (!waDropdown.classList.contains("hidden") && !waDropdown.contains(e.target) && e.target !== moreMenuBtn) {
+  if (!waDropdown.classList.contains("hidden") && !waDropdown.contains(e.target) && !moreMenuBtn.contains(e.target)) {
     toggleWaDropdown(false);
   }
 });
@@ -429,7 +427,7 @@ symbolBar.addEventListener("click", (e) => {
   updateCursorStatus();
 });
 
-// Toggle Word Wrap (and hide lineNumbers while wrapped so numbers never misalign)
+// Toggle Word Wrap
 menuWordWrapBtn.addEventListener("click", () => {
   const wrapped = codeEditor.classList.toggle("word-wrap");
   wordWrapState.textContent = wrapped ? "ON" : "OFF";
@@ -659,7 +657,6 @@ function renderQuickTabs() {
     return a.localeCompare(b);
   });
 
-  // Show up to 12 files in quick tabs for effortless 1-tap switching
   for (const path of allPaths.slice(0, 12)) {
     const baseName = path.split("/").pop();
     const pill = document.createElement("button");
@@ -1400,7 +1397,7 @@ zipInput.addEventListener("change", async (e) => {
     const validPaths = [];
 
     zip.forEach((relativePath, entry) => {
-      const normalized = relativePath.replace(/\/g, "/");
+      const normalized = relativePath.replace(/\\/g, "/");
       if (!entry.dir && !normalized.startsWith("__MACOSX/") && !normalized.endsWith(".DS_Store")) {
         validPaths.push(normalized);
       }
@@ -1561,7 +1558,7 @@ function resolvePath(baseFile, targetPath) {
   const trimmed = targetPath.trim();
   if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
 
-  const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\/g, "/");
+  const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/");
   if (!cleanTarget) return null;
 
   const baseParts = baseFile.split("/");
@@ -1590,14 +1587,14 @@ function lookupAssetUrl(resolvedPath, assetMap) {
 }
 
 function rewriteCssContent(cssText, cssFilePath, assetMap) {
-  let rewritten = cssText.replace(/url\(\s*(['"]?)([^'"()]+)\s*\)/gi, (match, quote, rawUrl) => {
+  let rewritten = cssText.replace(/url\(\s*(['"]?)([^'"()]+)\1\s*\)/gi, (match, quote, rawUrl) => {
     const resolved = resolvePath(cssFilePath, rawUrl);
     const mapped = lookupAssetUrl(resolved, assetMap);
     if (mapped) return `url("${mapped}")`;
     return match;
   });
 
-  rewritten = rewritten.replace(/@import\s+(['"])([^'"]+)/gi, (match, quote, rawUrl) => {
+  rewritten = rewritten.replace(/@import\s+(['"])([^'"]+)\1/gi, (match, quote, rawUrl) => {
     const resolved = resolvePath(cssFilePath, rawUrl);
     const mapped = lookupAssetUrl(resolved, assetMap);
     if (mapped) return `@import "${mapped}"`;
@@ -1683,7 +1680,7 @@ async function runProject(overrideHtmlFile = null) {
   });
 
   htmlContent = htmlContent.replace(
-    /(src|href|poster|data)\s*=\s*(["'])([^"']+)/gi,
+    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
     (match, attr, quote, rawPath) => {
       const resolved = resolvePath(targetHtmlFile, rawPath);
       if (!resolved) return match;
@@ -1700,7 +1697,7 @@ async function runProject(overrideHtmlFile = null) {
     }
   );
 
-  htmlContent = htmlContent.replace(/srcset\s*=\s*(["'])([^"']+)/gi, (match, quote, srcsetVal) => {
+  htmlContent = htmlContent.replace(/\bsrcset\s*=\s*(["'])([^"']+)\1/gi, (match, quote, srcsetVal) => {
     const rewrittenSet = srcsetVal
       .split(",")
       .map((item) => {
@@ -1729,12 +1726,12 @@ async function runProject(overrideHtmlFile = null) {
         if (!raw || typeof raw !== 'string') return null;
         const trimmed = raw.trim();
         if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-        const clean = trimmed.split('?')[0].split('#')[0].replace(/\/g, '/');
+        const clean = trimmed.split('?')[0].split('#')[0].replace(/\\\\/g, '/');
         if (!clean) return null;
         const baseParts = VFS.baseFile.split('/');
         baseParts.pop();
         const work = clean.startsWith('/') ? [] : baseParts;
-        const parts = clean.replace(/^\/+/, '').split('/');
+        const parts = clean.replace(/^\\/+/, '').split('/');
         for (const p of parts) {
           if (p === '.' || p === '') continue;
           if (p === '..') { if (work.length > 0) work.pop(); }
