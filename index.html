@@ -12,8 +12,6 @@
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="stylesheet" href="./style.css" />
-  <!-- JSZip Library for ZIP Import & Export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
   <div id="appContainer" class="app-container">
@@ -84,6 +82,10 @@
 
     <!-- WhatsApp-Style Triple-Dot Dropdown Menu -->
     <div id="waDropdown" class="wa-dropdown hidden" role="menu">
+      <button id="menuOpenBrowserBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">🌐</span>
+        <span class="wa-item-label">Open in Device Browser</span>
+      </button>
       <button id="menuFullscreenBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">⛶</span>
         <span class="wa-item-label">Full Screen</span>
@@ -356,7 +358,7 @@
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js" defer></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
