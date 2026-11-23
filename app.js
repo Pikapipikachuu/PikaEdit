@@ -133,6 +133,7 @@ let emptyFolders = [];
 let expandedFolders = new Set();
 let activeFile = "index.html";
 let activeBlobUrls = [];
+let browserTabBlobUrls = [];
 let logCount = 0;
 
 let sheetTargetFolder = "";
@@ -142,7 +143,7 @@ let saveTimer = null;
 function saveWorkspace() {
   if (saveStatusLabel) saveStatusLabel.textContent = "Saving...";
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(persistNow, 180);
+  saveTimer = setTimeout(persistNow, 120);
 }
 
 async function persistNow() {
@@ -222,6 +223,7 @@ const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const moreMenuBtn = document.getElementById("moreMenuBtn");
 const waDropdown = document.getElementById("waDropdown");
+const menuOpenBrowserBtn = document.getElementById("menuOpenBrowserBtn");
 const menuFullscreenBtn = document.getElementById("menuFullscreenBtn");
 const menuSymbolBarBtn = document.getElementById("menuSymbolBarBtn");
 const symbolBarState = document.getElementById("symbolBarState");
@@ -342,7 +344,7 @@ redoBtn.addEventListener("click", () => {
 });
 
 // =========================================================================
-// 4. WHATSAPP-STYLE TRIPLE-DOT MENU & TRUE FULL SCREEN MODE
+// 4. WHATSAPP-STYLE TRIPLE-DOT MENU, DEVICE BROWSER & FULL SCREEN MODE
 // =========================================================================
 function toggleWaDropdown(forceState) {
   const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
@@ -360,6 +362,82 @@ document.addEventListener("click", (e) => {
     toggleWaDropdown(false);
   }
 });
+
+function revokeBrowserTabBlobs() {
+  for (const url of browserTabBlobUrls) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (e) {}
+  }
+  browserTabBlobUrls = [];
+}
+
+async function openInDeviceBrowser() {
+  toggleWaDropdown(false);
+  const targetHtmlFile = findContextualHtml();
+
+  if (!targetHtmlFile) {
+    await showCozyPopup({
+      title: "No HTML File",
+      message: "Select or create an .html file to open in your device browser.",
+      icon: "🌐",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
+    return;
+  }
+
+  revokeBrowserTabBlobs();
+
+  const assetMap = {};
+  for (const [path, content] of Object.entries(files)) {
+    if (path.toLowerCase().endsWith(".css")) continue;
+    if (typeof content === "string" && content.startsWith("data:")) {
+      assetMap[path] = content;
+    } else {
+      const blob = new Blob([content], { type: getMimeType(path) });
+      const url = URL.createObjectURL(blob);
+      browserTabBlobUrls.push(url);
+      assetMap[path] = url;
+    }
+  }
+
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.toLowerCase().endsWith(".css")) continue;
+    const rewrittenCss = rewriteCssContent(content, path, assetMap);
+    const blob = new Blob([rewrittenCss], { type: "text/css" });
+    const url = URL.createObjectURL(blob);
+    browserTabBlobUrls.push(url);
+    assetMap[path] = url;
+  }
+
+  let htmlContent = files[targetHtmlFile].replace(
+    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
+    (match, attr, quote, rawPath) => {
+      const resolved = resolvePath(targetHtmlFile, rawPath);
+      if (!resolved) return match;
+      const mapped = lookupAssetUrl(resolved, assetMap);
+      return mapped ? `${attr}=${quote}${mapped}${quote}` : match;
+    }
+  );
+
+  const pageBlob = new Blob([htmlContent], { type: "text/html" });
+  const pageUrl = URL.createObjectURL(pageBlob);
+  browserTabBlobUrls.push(pageUrl);
+
+  const link = document.createElement("a");
+  link.href = pageUrl;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(revokeBrowserTabBlobs, 60000);
+}
+
+menuOpenBrowserBtn.addEventListener("click", openInDeviceBrowser);
 
 function enterAppFullscreen() {
   toggleWaDropdown(false);
@@ -585,9 +663,9 @@ function showCozyPopup({
       setTimeout(() => {
         cozyInput.focus();
         cozyInput.setSelectionRange(cozyInput.value.length, cozyInput.value.length);
-      }, 40);
+      }, 30);
     } else {
-      setTimeout(() => cozyConfirmBtn.focus(), 40);
+      setTimeout(() => cozyConfirmBtn.focus(), 30);
     }
 
     const cleanup = (result) => {
@@ -625,17 +703,35 @@ function showCozyPopup({
   });
 }
 
+let jszipLoadPromise = null;
 async function ensureJSZip() {
   if (typeof window.JSZip !== "undefined") return true;
-  await showCozyPopup({
-    title: "JSZip Offline",
-    message: "ZIP engine is still loading or offline. Connect once to cache it.",
-    icon: "📦",
-    tone: "warn",
-    mode: "alert",
-    confirmText: "OK"
-  });
-  return false;
+  if (!jszipLoadPromise) {
+    jszipLoadPromise = new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+      s.async = true;
+      s.onload = () => resolve(typeof window.JSZip !== "undefined");
+      s.onerror = () => {
+        jszipLoadPromise = null;
+        resolve(false);
+      };
+      document.head.appendChild(s);
+    });
+  }
+  const loaded = await jszipLoadPromise;
+  if (!loaded) {
+    await showCozyPopup({
+      title: "JSZip Offline",
+      message: "ZIP engine is unavailable offline right now. Connect once to cache it.",
+      icon: "📦",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
+    return false;
+  }
+  return true;
 }
 
 // =========================================================================
@@ -1051,7 +1147,7 @@ currentFileNameEl.addEventListener("click", async () => {
 // =========================================================================
 // FILE OPERATIONS & EDITOR
 // =========================================================================
-function openFile(fileName) {
+function openFile(fileName, { syncTree = true, persist = true } = {}) {
   if (!(fileName in files)) return;
   activeFile = fileName;
   expandParentsOf(fileName);
@@ -1100,8 +1196,12 @@ function openFile(fileName) {
     updateCursorStatus();
   }
 
-  renderFileTree();
-  saveWorkspace();
+  if (syncTree) {
+    renderFileTree();
+  }
+  if (persist) {
+    saveWorkspace();
+  }
 }
 
 async function deleteFile(fileName) {
@@ -1395,10 +1495,14 @@ zipInput.addEventListener("change", async (e) => {
   try {
     const zip = await JSZip.loadAsync(file);
     const validPaths = [];
+    const folderPathsFromZip = [];
 
     zip.forEach((relativePath, entry) => {
-      const normalized = relativePath.replace(/\\/g, "/");
-      if (!entry.dir && !normalized.startsWith("__MACOSX/") && !normalized.endsWith(".DS_Store")) {
+      const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
+      if (!normalized || normalized.startsWith("__MACOSX/") || normalized.endsWith(".DS_Store")) return;
+      if (entry.dir) {
+        folderPathsFromZip.push(normalized.replace(/\/+$/, ""));
+      } else {
         validPaths.push(normalized);
       }
     });
@@ -1427,6 +1531,22 @@ zipInput.addEventListener("change", async (e) => {
     const folderPrefix = targetFolder ? `${targetFolder}/` : "";
     let addedCount = 0;
 
+    if (targetFolder) {
+      expandParentsOf(targetFolder + "/dummy");
+      expandedFolders.add(targetFolder);
+      if (!emptyFolders.includes(targetFolder)) {
+        emptyFolders.push(targetFolder);
+      }
+    }
+
+    for (const fDir of folderPathsFromZip) {
+      const stripped = commonPrefix && fDir.startsWith(commonPrefix) ? fDir.slice(commonPrefix.length) : fDir;
+      if (!stripped) continue;
+      const mappedDir = folderPrefix + stripped;
+      expandParentsOf(mappedDir + "/dummy");
+      expandedFolders.add(mappedDir);
+    }
+
     for (const fullPath of validPaths) {
       const cleanPath = commonPrefix ? fullPath.slice(commonPrefix.length) : fullPath;
       if (!cleanPath) continue;
@@ -1439,24 +1559,21 @@ zipInput.addEventListener("change", async (e) => {
         const mime = getMimeType(cleanPath);
         files[destPath] = `data:${mime};base64,${base64}`;
       }
+      expandParentsOf(destPath);
       addedCount++;
-    }
-
-    if (targetFolder) {
-      expandedFolders.add(targetFolder);
     }
 
     const entryHtml = findEntryHtml(targetFolder) || Object.keys(files)[0];
     activeFile = entryHtml;
+    openFile(entryHtml, { syncTree: true, persist: false });
     await persistNow();
-    openFile(entryHtml);
     closeMobileSidebar();
 
     await showCozyPopup({
       title: "ZIP Imported",
       message: targetFolder
-        ? `Saved ${addedCount} file${addedCount === 1 ? "" : "s"} into "${targetFolder}/".`
-        : `Loaded ${addedCount} file${addedCount === 1 ? "" : "s"}.`,
+        ? `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} directly into "${targetFolder}/".`
+        : `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} into workspace.`,
       icon: "🎉",
       tone: "info",
       mode: "alert",
@@ -1498,9 +1615,11 @@ assetUploadInput.addEventListener("change", async (e) => {
   if (targetFolder) {
     expandedFolders.add(targetFolder);
   }
-  if (lastAddedPath) activeFile = lastAddedPath;
+  if (lastAddedPath) {
+    activeFile = lastAddedPath;
+    openFile(lastAddedPath, { syncTree: true, persist: false });
+  }
   await persistNow();
-  if (lastAddedPath) openFile(lastAddedPath);
   closeMobileSidebar();
 
   await showCozyPopup({
@@ -1911,9 +2030,11 @@ sidebarBackdrop.addEventListener("click", closeMobileSidebar);
 // BOOTSTRAP WORKSPACE FROM INDEXEDDB
 // =========================================================================
 (async function initWorkspace() {
-  const savedFiles = await idbGet("files");
-  const savedFolders = await idbGet("folders");
-  const savedActive = await idbGet("activeFile");
+  const [savedFiles, savedFolders, savedActive] = await Promise.all([
+    idbGet("files"),
+    idbGet("folders"),
+    idbGet("activeFile")
+  ]);
 
   if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
     files = savedFiles;
@@ -1935,6 +2056,5 @@ sidebarBackdrop.addEventListener("click", closeMobileSidebar);
     activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
   }
 
-  expandParentsOf(activeFile);
-  openFile(activeFile);
+  openFile(activeFile, { syncTree: true, persist: false });
 })();
