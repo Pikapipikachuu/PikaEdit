@@ -128,7 +128,9 @@ html, body {
   position: fixed;
   top: 44px;
   right: 10px;
-  width: 222px;
+  width: 232px;
+  max-height: calc(100dvh - 56px);
+  overflow-y: auto;
   background: #1f2637;
   border: 1px solid #35405b;
   border-radius: 15px;
