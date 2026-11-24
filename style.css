@@ -1149,3 +1149,66 @@ body.app-fullscreen .preview-topbar {
   }
 }
 
+.preview-dropdown {
+  top: 48px;
+  right: 10px;
+}
+
+.workspace-slot-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #141925;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.slot-nav-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  width: 22px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-label {
+  font-weight: 700;
+  color: var(--mint-bright);
+}
+
+.slot-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.tree-row.swipe-deleting {
+  background: rgba(251, 113, 133, 0.24) !important;
+  color: #fecdd3 !important;
+}
+
+.file-tree.slot-slide-in {
+  animation: slotSlideIn 0.18s ease-out;
+}
+
+@keyframes slotSlideIn {
+  from {
+    opacity: 0.35;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
