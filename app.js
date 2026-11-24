@@ -1781,9 +1781,44 @@ function resolvePath(baseFile, targetPath) {
 function lookupAssetUrl(resolvedPath, assetMap) {
   if (!resolvedPath) return null;
   if (assetMap[resolvedPath]) return assetMap[resolvedPath];
+
   const lower = resolvedPath.toLowerCase();
-  const foundKey = Object.keys(assetMap).find((k) => k.toLowerCase() === lower);
-  return foundKey ? assetMap[foundKey] : null;
+  const exactLowerKey = Object.keys(assetMap).find((k) => k.toLowerCase() === lower);
+  if (exactLowerKey) return assetMap[exactLowerKey];
+
+  const targetBase = lower.split("/").pop();
+  if (targetBase) {
+    const baseMatchKey = Object.keys(assetMap).find((k) => k.toLowerCase().split("/").pop() === targetBase);
+    if (baseMatchKey) return assetMap[baseMatchKey];
+  }
+
+  return null;
+}
+
+function toSafeDataUrl(content, path) {
+  if (typeof content === "string" && content.startsWith("data:")) {
+    return content;
+  }
+  const mime = getMimeType(path);
+  try {
+    const bytes = new TextEncoder().encode(String(content || ""));
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return `data:${mime};base64,${btoa(binary)}`;
+  } catch (e) {
+    return `data:${mime};charset=utf-8,${encodeURIComponent(String(content || ""))}`;
+  }
+}
+
+function isMediaOrImageFile(path) {
+  const lower = path.toLowerCase();
+  return [
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
+    ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".mp4", ".webm"
+  ].some((ext) => lower.endsWith(ext));
 }
 
 function rewriteCssContent(cssText, cssFilePath, assetMap) {
@@ -1919,7 +1954,14 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
         if (mapObj[resolved]) return mapObj[resolved];
         const lower = resolved.toLowerCase();
         const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
-        return key ? mapObj[key] : null;
+        if (key) return mapObj[key];
+
+        const baseName = lower.split('/').pop();
+        if (baseName) {
+          const fallbackKey = Object.keys(mapObj).find(k => k.toLowerCase().split('/').pop() === baseName);
+          if (fallbackKey) return mapObj[fallbackKey];
+        }
+        return null;
       }
 
       function resolveVfsPath(raw) {
@@ -2062,7 +2104,10 @@ function buildAssetMap(bucket) {
   for (const [path, content] of Object.entries(files)) {
     const lower = path.toLowerCase();
     if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
-    if (typeof content === "string" && content.startsWith("data:")) {
+
+    if (isMediaOrImageFile(path)) {
+      assetMap[path] = toSafeDataUrl(content, path);
+    } else if (typeof content === "string" && content.startsWith("data:")) {
       assetMap[path] = content;
     } else {
       assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
