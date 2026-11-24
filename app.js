@@ -1886,6 +1886,208 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
     return `<style${attrs}>${rewrittenInline}</style>`;
   });
 
+  htmlContent = htmlContent.replace(
+    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
+    (match, attr, quote, rawPath) => {
+      const resolved = resolvePath(htmlPath, rawPath);
+      if (!resolved) return match;
+
+      if (attr.toLowerCase() === "href" && resolved.toLowerCase().endsWith(".html")) {
+        if (isExternalBrowser && htmlPagesMap) {
+          const mappedPage = lookupAssetUrl(resolved, htmlPagesMap);
+          if (mappedPage) return `${attr}=${quote}${mappedPage}${quote}`;
+        }
+        return match;
+      }
+
+      const mapped = lookupAssetUrl(resolved, assetMap);
+      if (mapped) {
+        return `${attr}=${quote}${mapped}${quote}`;
+      }
+      return match;
+    }
+  );
+
+  htmlContent = htmlContent.replace(/\bsrcset\s*=\s*(["'])([^"']+)\1/gi, (match, quote, srcsetVal) => {
+    const rewrittenSet = srcsetVal
+      .split(",")
+      .map((item) => {
+        const parts = item.trim().split(/\s+/);
+        if (!parts[0]) return item;
+        const resolved = resolvePath(htmlPath, parts[0]);
+        const mapped = lookupAssetUrl(resolved, assetMap);
+        if (mapped) parts[0] = mapped;
+        return parts.join(" ");
+      })
+      .join(", ");
+    return `srcset=${quote}${rewrittenSet}${quote}`;
+  });
+
+  const vfsPayload = JSON.stringify({
+    baseFile: htmlPath,
+    assets: assetMap,
+    pages: htmlPagesMap || {},
+    external: isExternalBrowser
+  });
+
+  const runtimeHook = `
+  <script>
+    (function() {
+      const VFS = ${vfsPayload};
+
+      function resolveFromMap(raw, mapObj) {
+        if (!raw || typeof raw !== 'string') return null;
+        const trimmed = raw.trim();
+        if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
+        const clean = trimmed.split('?')[0].split('#')[0].replace(/\\\\/g, '/');
+        if (!clean) return null;
+        const baseParts = VFS.baseFile.split('/');
+        baseParts.pop();
+        const work = clean.startsWith('/') ? [] : baseParts;
+        const parts = clean.replace(/^\\/+/, '').split('/');
+        for (const p of parts) {
+          if (p === '.' || p === '') continue;
+          if (p === '..') { if (work.length > 0) work.pop(); }
+          else { work.push(p); }
+        }
+        const resolved = work.join('/');
+        if (mapObj[resolved]) return mapObj[resolved];
+        const lower = resolved.toLowerCase();
+        const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
+        if (key) return mapObj[key];
+
+        const baseName = lower.split('/').pop();
+        if (baseName) {
+          const fallbackKey = Object.keys(mapObj).find(k => k.toLowerCase().split('/').pop() === baseName);
+          if (fallbackKey) return mapObj[fallbackKey];
+        }
+        return null;
+      }
+
+      function resolveVfsPath(raw) {
+        return resolveFromMap(raw, VFS.assets);
+      }
+
+      const origFetch = window.fetch;
+      if (origFetch) {
+        window.fetch = function(input, init) {
+          if (typeof input === 'string') {
+            const mapped = resolveVfsPath(input);
+            if (mapped) input = mapped;
+          }
+          return origFetch.call(this, input, init);
+        };
+      }
+
+      const origXhrOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method, url) {
+        if (typeof url === 'string') {
+          const mapped = resolveVfsPath(url);
+          if (mapped) arguments[1] = mapped;
+        }
+        return origXhrOpen.apply(this, arguments);
+      };
+
+      const OrigAudio = window.Audio;
+      if (OrigAudio) {
+        window.Audio = function(src) {
+          const mapped = resolveVfsPath(src);
+          return new OrigAudio(mapped || src);
+        };
+        window.Audio.prototype = OrigAudio.prototype;
+      }
+
+      function hookSrcProperty(Proto) {
+        if (!Proto) return;
+        const desc = Object.getOwnPropertyDescriptor(Proto, 'src');
+        if (desc && desc.set) {
+          Object.defineProperty(Proto, 'src', {
+            get: desc.get,
+            set: function(val) {
+              const mapped = resolveVfsPath(val);
+              return desc.set.call(this, mapped || val);
+            },
+            configurable: true
+          });
+        }
+      }
+      hookSrcProperty(HTMLImageElement.prototype);
+      hookSrcProperty(HTMLMediaElement.prototype);
+      hookSrcProperty(HTMLScriptElement.prototype);
+      hookSrcProperty(HTMLSourceElement.prototype);
+
+      const origSetAttr = Element.prototype.setAttribute;
+      Element.prototype.setAttribute = function(name, val) {
+        if (typeof name === 'string' && /^(src|href)$/i.test(name) && typeof val === 'string') {
+          if (name.toLowerCase() === 'href' && val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
+            const pageUrl = resolveFromMap(val, VFS.pages);
+            if (pageUrl) val = pageUrl;
+          } else {
+            const mapped = resolveVfsPath(val);
+            if (mapped) val = mapped;
+          }
+        }
+        return origSetAttr.call(this, name, val);
+      };
+
+      const origWinOpen = window.open;
+      window.open = function(url, target, features) {
+        if (typeof url === 'string' && url.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
+          if (!VFS.external && window.parent && window.parent !== window) {
+            window.parent.postMessage({ source: 'pikaedit-navigate', from: VFS.baseFile, to: url }, '*');
+            return null;
+          }
+          const pageUrl = resolveFromMap(url, VFS.pages);
+          if (pageUrl) url = pageUrl;
+        }
+        return origWinOpen.call(this, url, target, features);
+      };
+
+      document.addEventListener('click', function(e) {
+        const anchor = e.target.closest ? e.target.closest('a[href]') : null;
+        if (!anchor) return;
+        const href = anchor.getAttribute('href');
+        if (!href || /^(https?:|mailto:|tel:|#|javascript:|blob:)/i.test(href)) return;
+        if (href.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
+          if (!VFS.external && window.parent && window.parent !== window) {
+            e.preventDefault();
+            window.parent.postMessage({
+              source: 'pikaedit-navigate',
+              from: VFS.baseFile,
+              to: href
+            }, '*');
+          } else if (VFS.external) {
+            const pageUrl = resolveFromMap(href, VFS.pages);
+            if (pageUrl) {
+              e.preventDefault();
+              window.location.href = pageUrl;
+            }
+          }
+        }
+      });
+
+      if (!VFS.external && window.parent && window.parent !== window) {
+        const send = (type, args) => {
+          try {
+            const formatted = Array.from(args).map(a => {
+              if (a instanceof Error) return a.name + ': ' + a.message;
+              if (typeof a === 'object' && a !== null) return JSON.stringify(a);
+              return String(a);
+            }).join(' ');
+            window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
+          } catch(e) {}
+        };
+        const origLog = console.log;
+        const origWarn = console.warn;
+        const origError = console.error;
+function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
+  let htmlContent = files[htmlPath];
+
+  htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, cssBody) => {
+    const rewrittenInline = rewriteCssContent(cssBody, htmlPath, assetMap);
+    return `<style${attrs}>${rewrittenInline}</style>`;
+  });
+
   // Rewrite inline style="... url(...) ..." attributes
   htmlContent = htmlContent.replace(
     /\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi,
@@ -2191,3 +2393,237 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
 
   return htmlContent;
 }
+
+
+function buildAssetMap(bucket) {
+  const assetMap = {};
+  for (const [path, content] of Object.entries(files)) {
+    const lower = path.toLowerCase();
+    if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
+
+    if (isMediaOrImageFile(path)) {
+      assetMap[path] = toSafeDataUrl(content, path);
+    } else if (typeof content === "string" && content.startsWith("data:")) {
+      assetMap[path] = content;
+    } else {
+      assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
+    }
+  }
+
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.toLowerCase().endsWith(".css")) continue;
+    const rewrittenCss = rewriteCssContent(content, path, assetMap);
+    assetMap[path] = createTrackedBlobUrl(rewrittenCss, "text/css", bucket);
+  }
+
+  return assetMap;
+}
+
+async function runProject(overrideHtmlFile = null) {
+  clearConsole();
+  revokePreviousBlobs();
+  togglePreviewDropdown(false);
+
+  const targetHtmlFile =
+    (overrideHtmlFile && files[overrideHtmlFile] !== undefined ? overrideHtmlFile : null) ||
+    findContextualHtml();
+
+  if (!targetHtmlFile) {
+    await showCozyPopup({
+      title: "No HTML File",
+      message: "Please create or select an .html file to run your project.",
+      icon: "📄",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
+    return;
+  }
+
+  currentPreviewHtmlFile = targetHtmlFile;
+  previewTitle.textContent = targetHtmlFile;
+
+  const assetMap = buildAssetMap(activeBlobUrls);
+  const htmlContent = compileSingleHtmlDocument(targetHtmlFile, assetMap, null, false);
+
+  previewFrame.srcdoc = htmlContent;
+  previewModal.classList.remove("hidden");
+}
+
+async function openInDeviceBrowser() {
+  togglePreviewDropdown(false);
+
+  const targetHtmlFile =
+    (currentPreviewHtmlFile && files[currentPreviewHtmlFile] !== undefined ? currentPreviewHtmlFile : null) ||
+    findContextualHtml();
+
+  if (!targetHtmlFile) {
+    await showCozyPopup({
+      title: "No HTML File",
+      message: "Please create or select an .html file first.",
+      icon: "🌐",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
+    return;
+  }
+
+  revokeBrowserTabBlobs();
+
+  const assetMap = buildAssetMap(browserTabBlobUrls);
+  const htmlPagesMap = {};
+  const allHtmlPaths = Object.keys(files).filter((p) => {
+    const l = p.toLowerCase();
+    return l.endsWith(".html") || l.endsWith(".htm");
+  });
+
+  for (const hPath of allHtmlPaths) {
+    const initialHtml = compileSingleHtmlDocument(hPath, assetMap, null, true);
+    htmlPagesMap[hPath] = createTrackedBlobUrl(initialHtml, "text/html", browserTabBlobUrls);
+  }
+
+  for (const hPath of allHtmlPaths) {
+    const linkedHtml = compileSingleHtmlDocument(hPath, assetMap, htmlPagesMap, true);
+    const oldUrl = htmlPagesMap[hPath];
+    htmlPagesMap[hPath] = createTrackedBlobUrl(linkedHtml, "text/html", browserTabBlobUrls);
+    try {
+      URL.revokeObjectURL(oldUrl);
+    } catch (e) {}
+  }
+
+  const entryUrl = htmlPagesMap[targetHtmlFile];
+  if (!entryUrl) return;
+
+  const link = document.createElement("a");
+  link.href = entryUrl;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(revokeBrowserTabBlobs, 180000);
+}
+
+openBrowserBtn.addEventListener("click", openInDeviceBrowser);
+
+runBtn.addEventListener("click", () => runProject());
+reloadPreviewBtn.addEventListener("click", () => runProject(currentPreviewHtmlFile));
+
+closePreviewBtn.addEventListener("click", () => {
+  togglePreviewDropdown(false);
+  exitAppFullscreen();
+  previewModal.classList.add("hidden");
+  previewFrame.srcdoc = "";
+  currentPreviewHtmlFile = null;
+  revokePreviousBlobs();
+});
+
+window.addEventListener("message", (event) => {
+  if (!event.data) return;
+  if (event.data.source === "pikaedit-console") {
+    appendConsoleLog(event.data.type, event.data.message);
+  } else if (event.data.source === "pikaedit-navigate") {
+    const targetPath = resolvePath(event.data.from, event.data.to);
+    if (targetPath && files[targetPath] !== undefined) {
+      runProject(targetPath);
+    } else {
+      appendConsoleLog("warn", `Page not found: ${event.data.to}`);
+    }
+  }
+});
+
+function appendConsoleLog(type, text) {
+  logCount++;
+  consoleBadge.textContent = logCount;
+  const div = document.createElement("div");
+  div.className = `log-line log-${type}`;
+  div.textContent = `> ${text}`;
+  consoleLogs.appendChild(div);
+  consoleLogs.scrollTop = consoleLogs.scrollHeight;
+}
+
+function clearConsole() {
+  logCount = 0;
+  consoleBadge.textContent = "0";
+  consoleLogs.innerHTML = "";
+}
+
+consoleToggleBtn.addEventListener("click", () => {
+  consolePanel.classList.toggle("hidden");
+});
+
+clearConsoleBtn.addEventListener("click", clearConsole);
+
+// Mobile Drawer Controls
+function closeMobileSidebar() {
+  sidebar.classList.remove("open");
+  sidebarBackdrop.classList.remove("show");
+}
+
+menuBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("open");
+  sidebarBackdrop.classList.toggle("show");
+});
+
+sidebarBackdrop.addEventListener("click", closeMobileSidebar);
+
+// =========================================================================
+// BOOTSTRAP WORKSPACE FROM INDEXEDDB
+// =========================================================================
+(async function initWorkspace() {
+  const [savedWorkspaces, savedSlotIdx, savedFiles, savedFolders, savedActive] = await Promise.all([
+    idbGet("workspaces_v1"),
+    idbGet("currentSlotIndex_v1"),
+    idbGet("files"),
+    idbGet("folders"),
+    idbGet("activeFile")
+  ]);
+
+  if (Array.isArray(savedWorkspaces) && savedWorkspaces.length > 0) {
+    workspaces = savedWorkspaces;
+    currentSlotIndex =
+      typeof savedSlotIdx === "number" && savedSlotIdx >= 0 && savedSlotIdx < workspaces.length
+        ? savedSlotIdx
+        : 0;
+    const slot = workspaces[currentSlotIndex];
+    files = slot.files && Object.keys(slot.files).length > 0 ? slot.files : { "index.html": "" };
+    emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
+    expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
+    activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
+  } else {
+    if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
+      files = savedFiles;
+    } else {
+      try {
+        const legacyFolders = window.localStorage.getItem(FOLDERS_KEY);
+        if (legacyFolders) emptyFolders = JSON.parse(legacyFolders);
+      } catch (e) {}
+    }
+
+    if (Array.isArray(savedFolders)) {
+      emptyFolders = savedFolders;
+    }
+
+    if (savedActive && savedActive in files) {
+      activeFile = savedActive;
+    } else {
+      activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
+    }
+
+    workspaces = [
+      {
+        files,
+        emptyFolders,
+        expandedFolders: Array.from(expandedFolders),
+        activeFile
+      }
+    ];
+    currentSlotIndex = 0;
+    await persistNow();
+  }
+
+  updateSlotBarUI();
+  openFile(activeFile, { syncTree: true, persist: false });
+})();
