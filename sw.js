@@ -1,4 +1,4 @@
-const CACHE_NAME = "pikaedit-cache-v11";
+const CACHE_NAME = "pikaedit-cache-v12";
 const LOCAL_ASSETS = [
   "./",
   "./index.html",
