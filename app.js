@@ -58,7 +58,7 @@ const FOLDERS_KEY = "pikaedit_folders_v2";
 const ACTIVE_KEY = "pikaedit_active_file_v2";
 
 // =========================================================================
-// 1. UNLIMITED INDEXEDDB STORAGE (Prevents large ZIPs from vanishing!)
+// 1. UNLIMITED INDEXEDDB STORAGE (Multi-Workspace Support)
 // =========================================================================
 const DB_NAME = "PikaEditWorkspaceDB";
 const DB_STORE = "workspace";
@@ -128,16 +128,83 @@ function loadLegacyLocalStorage() {
   return null;
 }
 
-let files = loadLegacyLocalStorage() || { ...DEFAULT_FILES };
+function createNewSlotObject(initialFiles = null) {
+  const slotFiles = initialFiles || {
+    "index.html": "",
+    "style.css": "",
+    "script.js": ""
+  };
+  return {
+    files: slotFiles,
+    emptyFolders: [],
+    expandedFolders: [],
+    activeFile: Object.keys(slotFiles)[0] || "index.html"
+  };
+}
+
+let workspaces = [createNewSlotObject(loadLegacyLocalStorage() || { ...DEFAULT_FILES })];
+let currentSlotIndex = 0;
+
+let files = workspaces[0].files;
 let emptyFolders = [];
 let expandedFolders = new Set();
-let activeFile = "index.html";
+let activeFile = workspaces[0].activeFile;
+
 let activeBlobUrls = [];
 let browserTabBlobUrls = [];
+let currentPreviewHtmlFile = null;
 let logCount = 0;
 
 let sheetTargetFolder = "";
 let pendingUploadFolder = "";
+
+function syncCurrentSlotState() {
+  if (!workspaces[currentSlotIndex]) {
+    workspaces[currentSlotIndex] = createNewSlotObject();
+  }
+  workspaces[currentSlotIndex].files = files;
+  workspaces[currentSlotIndex].emptyFolders = emptyFolders;
+  workspaces[currentSlotIndex].expandedFolders = Array.from(expandedFolders);
+  workspaces[currentSlotIndex].activeFile = activeFile;
+}
+
+function updateSlotBarUI() {
+  if (!workspaceSlotLabel) return;
+  workspaceSlotLabel.textContent = `Section ${currentSlotIndex + 1} / ${workspaces.length}`;
+  if (prevSlotBtn) {
+    prevSlotBtn.classList.toggle("hidden", currentSlotIndex === 0);
+  }
+}
+
+async function switchWorkspaceSlot(targetIndex, createIfMissing = false) {
+  syncCurrentSlotState();
+
+  if (targetIndex < 0) return;
+  if (targetIndex >= workspaces.length) {
+    if (!createIfMissing) return;
+    workspaces.push(createNewSlotObject());
+  }
+
+  currentSlotIndex = targetIndex;
+  const slot = workspaces[currentSlotIndex];
+  files = slot.files;
+  emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
+  expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
+
+  if (slot.activeFile && slot.activeFile in files) {
+    activeFile = slot.activeFile;
+  } else {
+    activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
+  }
+
+  updateSlotBarUI();
+  fileTreeEl.classList.remove("slot-slide-in");
+  void fileTreeEl.offsetWidth;
+  fileTreeEl.classList.add("slot-slide-in");
+
+  openFile(activeFile, { syncTree: true, persist: false });
+  await persistNow();
+}
 
 let saveTimer = null;
 function saveWorkspace() {
@@ -147,6 +214,9 @@ function saveWorkspace() {
 }
 
 async function persistNow() {
+  syncCurrentSlotState();
+  await idbSet("workspaces_v1", workspaces);
+  await idbSet("currentSlotIndex_v1", currentSlotIndex);
   await idbSet("files", files);
   await idbSet("folders", emptyFolders);
   await idbSet("activeFile", activeFile);
@@ -223,7 +293,6 @@ const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const moreMenuBtn = document.getElementById("moreMenuBtn");
 const waDropdown = document.getElementById("waDropdown");
-const menuOpenBrowserBtn = document.getElementById("menuOpenBrowserBtn");
 const menuFullscreenBtn = document.getElementById("menuFullscreenBtn");
 const menuSymbolBarBtn = document.getElementById("menuSymbolBarBtn");
 const symbolBarState = document.getElementById("symbolBarState");
@@ -236,6 +305,10 @@ const menuSaveZipBtn = document.getElementById("menuSaveZipBtn");
 const menuResetBtn = document.getElementById("menuResetBtn");
 const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
 const previewFullscreenBtn = document.getElementById("previewFullscreenBtn");
+
+const previewMoreBtn = document.getElementById("previewMoreBtn");
+const previewDropdown = document.getElementById("previewDropdown");
+const openBrowserBtn = document.getElementById("openBrowserBtn");
 
 const fileTabsBar = document.getElementById("fileTabsBar");
 const cursorPosLabel = document.getElementById("cursorPosLabel");
@@ -253,6 +326,8 @@ const sidebar = document.getElementById("sidebar");
 const sidebarBackdrop = document.getElementById("sidebarBackdrop");
 const menuBtn = document.getElementById("menuBtn");
 const fileTreeEl = document.getElementById("fileTree");
+const workspaceSlotLabel = document.getElementById("workspaceSlotLabel");
+const prevSlotBtn = document.getElementById("prevSlotBtn");
 const currentFileNameEl = document.getElementById("currentFileName");
 const codeEditor = document.getElementById("codeEditor");
 const lineNumbers = document.getElementById("lineNumbers");
@@ -294,6 +369,15 @@ const sheetUploadFilesBtn = document.getElementById("sheetUploadFilesBtn");
 const sheetExportZipBtn = document.getElementById("sheetExportZipBtn");
 const sheetRenameFolderBtn = document.getElementById("sheetRenameFolderBtn");
 
+if (prevSlotBtn) {
+  prevSlotBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (currentSlotIndex > 0) {
+      switchWorkspaceSlot(currentSlotIndex - 1, false);
+    }
+  });
+}
+
 // =========================================================================
 // 3. UNDO / REDO HISTORY STACK PER FILE
 // =========================================================================
@@ -301,9 +385,14 @@ const undoStack = {};
 const redoStack = {};
 let lastSnapshotTimer = null;
 
+function getUndoKey(filePath) {
+  return `${currentSlotIndex}::${filePath}`;
+}
+
 function recordUndoSnapshot(filePath, value) {
-  if (!undoStack[filePath]) undoStack[filePath] = [];
-  const stack = undoStack[filePath];
+  const key = getUndoKey(filePath);
+  if (!undoStack[key]) undoStack[key] = [];
+  const stack = undoStack[key];
   if (stack.length === 0 || stack[stack.length - 1] !== value) {
     stack.push(value);
     if (stack.length > 60) stack.shift();
@@ -312,12 +401,13 @@ function recordUndoSnapshot(filePath, value) {
 
 undoBtn.addEventListener("click", () => {
   if (codeEditor.classList.contains("hidden")) return;
-  const stack = undoStack[activeFile] || [];
+  const key = getUndoKey(activeFile);
+  const stack = undoStack[key] || [];
   if (stack.length <= 1) return;
 
-  if (!redoStack[activeFile]) redoStack[activeFile] = [];
+  if (!redoStack[key]) redoStack[key] = [];
   const current = stack.pop();
-  redoStack[activeFile].push(current);
+  redoStack[key].push(current);
 
   const prev = stack[stack.length - 1];
   codeEditor.value = prev;
@@ -329,12 +419,13 @@ undoBtn.addEventListener("click", () => {
 
 redoBtn.addEventListener("click", () => {
   if (codeEditor.classList.contains("hidden")) return;
-  const rStack = redoStack[activeFile] || [];
+  const key = getUndoKey(activeFile);
+  const rStack = redoStack[key] || [];
   if (rStack.length === 0) return;
 
   const next = rStack.pop();
-  if (!undoStack[activeFile]) undoStack[activeFile] = [];
-  undoStack[activeFile].push(next);
+  if (!undoStack[key]) undoStack[key] = [];
+  undoStack[key].push(next);
 
   codeEditor.value = next;
   files[activeFile] = next;
@@ -344,7 +435,7 @@ redoBtn.addEventListener("click", () => {
 });
 
 // =========================================================================
-// 4. WHATSAPP-STYLE TRIPLE-DOT MENU, DEVICE BROWSER & FULL SCREEN MODE
+// 4. WHATSAPP-STYLE TRIPLE-DOT MENUS & FULL SCREEN MODE
 // =========================================================================
 function toggleWaDropdown(forceState) {
   const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
@@ -352,95 +443,40 @@ function toggleWaDropdown(forceState) {
   moreMenuBtn.setAttribute("aria-expanded", String(show));
 }
 
+function togglePreviewDropdown(forceState) {
+  if (!previewDropdown || !previewMoreBtn) return;
+  const show = typeof forceState === "boolean" ? forceState : previewDropdown.classList.contains("hidden");
+  previewDropdown.classList.toggle("hidden", !show);
+  previewMoreBtn.setAttribute("aria-expanded", String(show));
+}
+
 moreMenuBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   toggleWaDropdown();
+});
+
+previewMoreBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  togglePreviewDropdown();
 });
 
 document.addEventListener("click", (e) => {
   if (!waDropdown.classList.contains("hidden") && !waDropdown.contains(e.target) && !moreMenuBtn.contains(e.target)) {
     toggleWaDropdown(false);
   }
+  if (
+    previewDropdown &&
+    !previewDropdown.classList.contains("hidden") &&
+    !previewDropdown.contains(e.target) &&
+    !previewMoreBtn.contains(e.target)
+  ) {
+    togglePreviewDropdown(false);
+  }
 });
-
-function revokeBrowserTabBlobs() {
-  for (const url of browserTabBlobUrls) {
-    try {
-      URL.revokeObjectURL(url);
-    } catch (e) {}
-  }
-  browserTabBlobUrls = [];
-}
-
-async function openInDeviceBrowser() {
-  toggleWaDropdown(false);
-  const targetHtmlFile = findContextualHtml();
-
-  if (!targetHtmlFile) {
-    await showCozyPopup({
-      title: "No HTML File",
-      message: "Select or create an .html file to open in your device browser.",
-      icon: "🌐",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return;
-  }
-
-  revokeBrowserTabBlobs();
-
-  const assetMap = {};
-  for (const [path, content] of Object.entries(files)) {
-    if (path.toLowerCase().endsWith(".css")) continue;
-    if (typeof content === "string" && content.startsWith("data:")) {
-      assetMap[path] = content;
-    } else {
-      const blob = new Blob([content], { type: getMimeType(path) });
-      const url = URL.createObjectURL(blob);
-      browserTabBlobUrls.push(url);
-      assetMap[path] = url;
-    }
-  }
-
-  for (const [path, content] of Object.entries(files)) {
-    if (!path.toLowerCase().endsWith(".css")) continue;
-    const rewrittenCss = rewriteCssContent(content, path, assetMap);
-    const blob = new Blob([rewrittenCss], { type: "text/css" });
-    const url = URL.createObjectURL(blob);
-    browserTabBlobUrls.push(url);
-    assetMap[path] = url;
-  }
-
-  let htmlContent = files[targetHtmlFile].replace(
-    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
-    (match, attr, quote, rawPath) => {
-      const resolved = resolvePath(targetHtmlFile, rawPath);
-      if (!resolved) return match;
-      const mapped = lookupAssetUrl(resolved, assetMap);
-      return mapped ? `${attr}=${quote}${mapped}${quote}` : match;
-    }
-  );
-
-  const pageBlob = new Blob([htmlContent], { type: "text/html" });
-  const pageUrl = URL.createObjectURL(pageBlob);
-  browserTabBlobUrls.push(pageUrl);
-
-  const link = document.createElement("a");
-  link.href = pageUrl;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  setTimeout(revokeBrowserTabBlobs, 60000);
-}
-
-menuOpenBrowserBtn.addEventListener("click", openInDeviceBrowser);
 
 function enterAppFullscreen() {
   toggleWaDropdown(false);
+  togglePreviewDropdown(false);
   closeMobileSidebar();
   document.body.classList.add("app-fullscreen");
   exitFullscreenBtn.classList.remove("hidden");
@@ -735,7 +771,7 @@ async function ensureJSZip() {
 }
 
 // =========================================================================
-// QUICK OPEN FILE TABS & FOLDER TREE EXPLORER
+// QUICK OPEN FILE TABS, SWIPE GESTURES & FOLDER TREE EXPLORER
 // =========================================================================
 function renderQuickTabs() {
   if (!fileTabsBar) return;
@@ -857,6 +893,105 @@ function buildTreeStructure() {
   return root;
 }
 
+// Track swipe gestures inside fileTreeEl:
+// - Left swipe on a row => Instant delete without confirmation popup
+// - Right swipe anywhere in file box => Open next/new independent workspace section
+let treeSwipeState = null;
+
+fileTreeEl.addEventListener(
+  "touchstart",
+  (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const row = e.target.closest(".tree-row");
+    treeSwipeState = {
+      startX: t.clientX,
+      startY: t.clientY,
+      lastX: t.clientX,
+      lastY: t.clientY,
+      row,
+      lockedAxis: null,
+      handled: false
+    };
+  },
+  { passive: true }
+);
+
+fileTreeEl.addEventListener(
+  "touchmove",
+  (e) => {
+    if (!treeSwipeState || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - treeSwipeState.startX;
+    const dy = t.clientY - treeSwipeState.startY;
+    treeSwipeState.lastX = t.clientX;
+    treeSwipeState.lastY = t.clientY;
+
+    if (!treeSwipeState.lockedAxis) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      treeSwipeState.lockedAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+    }
+
+    if (treeSwipeState.lockedAxis !== "x") return;
+
+    // Left swipe on a specific file/folder row => visual red delete slide
+    if (dx < 0 && treeSwipeState.row) {
+      const clamped = Math.max(dx, -110);
+      treeSwipeState.row.style.transition = "none";
+      treeSwipeState.row.style.transform = `translateX(${clamped}px)`;
+      treeSwipeState.row.classList.add("swipe-deleting");
+    } else if (dx > 0) {
+      // Right swipe anywhere in file box => subtle right shift feedback
+      const clamped = Math.min(dx * 0.35, 36);
+      fileTreeEl.style.transition = "none";
+      fileTreeEl.style.transform = `translateX(${clamped}px)`;
+    }
+  },
+  { passive: true }
+);
+
+fileTreeEl.addEventListener("touchend", async () => {
+  if (!treeSwipeState) return;
+  const state = treeSwipeState;
+  treeSwipeState = null;
+
+  const dx = state.lastX - state.startX;
+  const dy = state.lastY - state.startY;
+
+  if (state.row) {
+    state.row.style.transition = "transform 0.16s ease";
+    state.row.style.transform = "";
+    state.row.classList.remove("swipe-deleting");
+  }
+  fileTreeEl.style.transition = "transform 0.16s ease";
+  fileTreeEl.style.transform = "";
+
+  if (state.lockedAxis !== "x" || Math.abs(dx) < 62 || Math.abs(dx) < Math.abs(dy)) {
+    return;
+  }
+
+  // Prevent accidental click trigger after swipe
+  const blockClickOnce = (ev) => {
+    ev.stopPropagation();
+    ev.preventDefault();
+  };
+  fileTreeEl.addEventListener("click", blockClickOnce, { capture: true, once: true });
+  setTimeout(() => fileTreeEl.removeEventListener("click", blockClickOnce, { capture: true }), 80);
+
+  if (dx < -62 && state.row) {
+    const deleteType = state.row.getAttribute("data-swipe-type");
+    const deletePath = state.row.getAttribute("data-swipe-path");
+    if (deleteType === "file" && deletePath) {
+      await deleteFileInstant(deletePath);
+    } else if (deleteType === "folder" && deletePath) {
+      await deleteFolderInstant(deletePath);
+    }
+  } else if (dx > 62) {
+    // Right swipe anywhere in file box => open next / new workspace section
+    await switchWorkspaceSlot(currentSlotIndex + 1, true);
+  }
+});
+
 function renderTreeNodes(node, depth = 0) {
   const fragment = document.createDocumentFragment();
 
@@ -868,6 +1003,8 @@ function renderTreeNodes(node, depth = 0) {
     const row = document.createElement("div");
     row.className = "tree-row folder-row";
     row.style.paddingLeft = `${8 + depth * 14}px`;
+    row.setAttribute("data-swipe-type", "folder");
+    row.setAttribute("data-swipe-path", folder.path);
 
     const left = document.createElement("div");
     left.className = "tree-left";
@@ -889,17 +1026,7 @@ function renderTreeNodes(node, depth = 0) {
       openFolderActionSheet(folder.path);
     };
 
-    const delFolderBtn = document.createElement("button");
-    delFolderBtn.className = "row-mini-btn del";
-    delFolderBtn.innerHTML = "&times;";
-    delFolderBtn.title = `Delete folder ${folder.path}`;
-    delFolderBtn.onclick = (e) => {
-      e.stopPropagation();
-      deleteFolder(folder.path);
-    };
-
     actions.appendChild(addInsideBtn);
-    actions.appendChild(delFolderBtn);
 
     row.appendChild(left);
     row.appendChild(actions);
@@ -934,6 +1061,8 @@ function renderTreeNodes(node, depth = 0) {
     const row = document.createElement("div");
     row.className = `tree-row ${fileObj.path === activeFile ? "active" : ""}`;
     row.style.paddingLeft = `${14 + depth * 14}px`;
+    row.setAttribute("data-swipe-type", "file");
+    row.setAttribute("data-swipe-path", fileObj.path);
 
     const left = document.createElement("div");
     left.className = "tree-left";
@@ -942,21 +1071,7 @@ function renderTreeNodes(node, depth = 0) {
       <span class="file-name">${fileObj.name}</span>
     `;
 
-    const actions = document.createElement("div");
-    actions.className = "tree-row-actions";
-
-    const delBtn = document.createElement("button");
-    delBtn.className = "row-mini-btn del";
-    delBtn.innerHTML = "&times;";
-    delBtn.title = "Delete file";
-    delBtn.onclick = (e) => {
-      e.stopPropagation();
-      deleteFile(fileObj.path);
-    };
-
-    actions.appendChild(delBtn);
     row.appendChild(left);
-    row.appendChild(actions);
 
     row.onclick = () => {
       openFile(fileObj.path);
@@ -974,6 +1089,7 @@ function renderFileTree() {
   const tree = buildTreeStructure();
   fileTreeEl.appendChild(renderTreeNodes(tree, 0));
   renderQuickTabs();
+  updateSlotBarUI();
 }
 
 // =========================================================================
@@ -1145,7 +1261,7 @@ currentFileNameEl.addEventListener("click", async () => {
 });
 
 // =========================================================================
-// FILE OPERATIONS & EDITOR
+// FILE OPERATIONS & EDITOR (Instant Swipe Delete)
 // =========================================================================
 function openFile(fileName, { syncTree = true, persist = true } = {}) {
   if (!(fileName in files)) return;
@@ -1204,79 +1320,44 @@ function openFile(fileName, { syncTree = true, persist = true } = {}) {
   }
 }
 
-async function deleteFile(fileName) {
-  if (Object.keys(files).length <= 1) {
-    await showCozyPopup({
-      title: "Cannot Delete",
-      message: "At least one file must remain in the project.",
-      icon: "🌷",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "Got it"
-    });
-    return;
-  }
-
-  const confirmed = await showCozyPopup({
-    title: "Delete File?",
-    message: `Are you sure you want to delete "${fileName}"?`,
-    icon: "🗑️",
-    tone: "danger",
-    mode: "confirm",
-    confirmText: "Delete",
-    cancelText: "Cancel"
-  });
-
-  if (!confirmed) return;
+async function deleteFileInstant(fileName) {
+  if (!(fileName in files)) return;
 
   delete files[fileName];
-  delete undoStack[fileName];
-  delete redoStack[fileName];
-  if (activeFile === fileName) {
+  delete undoStack[getUndoKey(fileName)];
+  delete redoStack[getUndoKey(fileName)];
+
+  if (Object.keys(files).length === 0) {
+    files["index.html"] = "";
+  }
+
+  if (!(activeFile in files)) {
     activeFile = findEntryHtml() || Object.keys(files)[0];
   }
+
   await persistNow();
   openFile(activeFile);
 }
 
-async function deleteFolder(folderPath) {
+async function deleteFolderInstant(folderPath) {
   const prefix = folderPath + "/";
   const insideFiles = Object.keys(files).filter((k) => k.startsWith(prefix));
-  const remainingFiles = Object.keys(files).filter((k) => !k.startsWith(prefix));
-
-  if (remainingFiles.length === 0) {
-    await showCozyPopup({
-      title: "Cannot Delete",
-      message: "At least one file must remain outside this folder.",
-      icon: "🌷",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "Got it"
-    });
-    return;
-  }
-
-  const confirmed = await showCozyPopup({
-    title: "Delete Folder?",
-    message: `Delete "${folderPath}" and its ${insideFiles.length} file${insideFiles.length === 1 ? "" : "s"}?`,
-    icon: "📂",
-    tone: "danger",
-    mode: "confirm",
-    confirmText: "Delete",
-    cancelText: "Cancel"
-  });
-
-  if (!confirmed) return;
 
   for (const f of insideFiles) {
     delete files[f];
-    delete undoStack[f];
-    delete redoStack[f];
+    delete undoStack[getUndoKey(f)];
+    delete redoStack[getUndoKey(f)];
   }
   emptyFolders = emptyFolders.filter((f) => f !== folderPath && !f.startsWith(prefix));
+
+  if (Object.keys(files).length === 0) {
+    files["index.html"] = "";
+  }
+
   if (!(activeFile in files)) {
     activeFile = findEntryHtml() || Object.keys(files)[0];
   }
+
   await persistNow();
   openFile(activeFile);
 }
@@ -1410,8 +1491,8 @@ newFolderBtn.addEventListener("click", () => promptCreateFolder(""));
 
 resetBtn.addEventListener("click", async () => {
   const confirmed = await showCozyPopup({
-    title: "Reset Workspace?",
-    message: "This will clear all files and leave empty index.html, style.css, and script.js.",
+    title: "Reset Current Section?",
+    message: "This will clear files in this section and leave empty index.html, style.css, and script.js.",
     icon: "🧹",
     tone: "danger",
     mode: "confirm",
@@ -1573,7 +1654,7 @@ zipInput.addEventListener("change", async (e) => {
       title: "ZIP Imported",
       message: targetFolder
         ? `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} directly into "${targetFolder}/".`
-        : `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} into workspace.`,
+        : `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} into Section ${currentSlotIndex + 1}.`,
       icon: "🎉",
       tone: "info",
       mode: "alert",
@@ -1664,13 +1745,13 @@ exportZipBtn.addEventListener("click", async () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "pikaedit-project.zip";
+  a.download = `pikaedit-section-${currentSlotIndex + 1}.zip`;
   a.click();
   URL.revokeObjectURL(url);
 });
 
 // =========================================================================
-// LIVE RUNNER & VIRTUAL FILE SYSTEM
+// LIVE RUNNER, VIRTUAL FILE SYSTEM & EXTERNAL BROWSER BUNDLER
 // =========================================================================
 function resolvePath(baseFile, targetPath) {
   if (!targetPath) return null;
@@ -1732,10 +1813,19 @@ function revokePreviousBlobs() {
   activeBlobUrls = [];
 }
 
-function createTrackedBlobUrl(content, mime) {
+function revokeBrowserTabBlobs() {
+  for (const url of browserTabBlobUrls) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (e) {}
+  }
+  browserTabBlobUrls = [];
+}
+
+function createTrackedBlobUrl(content, mime, bucket = activeBlobUrls) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
-  activeBlobUrls.push(url);
+  bucket.push(url);
   return url;
 }
 
@@ -1753,58 +1843,25 @@ function findContextualHtml() {
   return findEntryHtml("");
 }
 
-async function runProject(overrideHtmlFile = null) {
-  clearConsole();
-  revokePreviousBlobs();
-
-  const targetHtmlFile =
-    (overrideHtmlFile && files[overrideHtmlFile] !== undefined ? overrideHtmlFile : null) ||
-    findContextualHtml();
-
-  if (!targetHtmlFile) {
-    await showCozyPopup({
-      title: "No HTML File",
-      message: "Please create or select an .html file to run your project.",
-      icon: "📄",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return;
-  }
-
-  previewTitle.textContent = targetHtmlFile;
-
-  const assetMap = {};
-  for (const [path, content] of Object.entries(files)) {
-    if (path.toLowerCase().endsWith(".css")) continue;
-    if (typeof content === "string" && content.startsWith("data:")) {
-      assetMap[path] = content;
-    } else {
-      assetMap[path] = createTrackedBlobUrl(content, getMimeType(path));
-    }
-  }
-
-  for (const [path, content] of Object.entries(files)) {
-    if (!path.toLowerCase().endsWith(".css")) continue;
-    const rewrittenCss = rewriteCssContent(content, path, assetMap);
-    assetMap[path] = createTrackedBlobUrl(rewrittenCss, "text/css");
-  }
-
-  let htmlContent = files[targetHtmlFile];
+function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
+  let htmlContent = files[htmlPath];
 
   htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, cssBody) => {
-    const rewrittenInline = rewriteCssContent(cssBody, targetHtmlFile, assetMap);
+    const rewrittenInline = rewriteCssContent(cssBody, htmlPath, assetMap);
     return `<style${attrs}>${rewrittenInline}</style>`;
   });
 
   htmlContent = htmlContent.replace(
     /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
     (match, attr, quote, rawPath) => {
-      const resolved = resolvePath(targetHtmlFile, rawPath);
+      const resolved = resolvePath(htmlPath, rawPath);
       if (!resolved) return match;
 
       if (attr.toLowerCase() === "href" && resolved.toLowerCase().endsWith(".html")) {
+        if (isExternalBrowser && htmlPagesMap) {
+          const mappedPage = lookupAssetUrl(resolved, htmlPagesMap);
+          if (mappedPage) return `${attr}=${quote}${mappedPage}${quote}`;
+        }
         return match;
       }
 
@@ -1822,7 +1879,7 @@ async function runProject(overrideHtmlFile = null) {
       .map((item) => {
         const parts = item.trim().split(/\s+/);
         if (!parts[0]) return item;
-        const resolved = resolvePath(targetHtmlFile, parts[0]);
+        const resolved = resolvePath(htmlPath, parts[0]);
         const mapped = lookupAssetUrl(resolved, assetMap);
         if (mapped) parts[0] = mapped;
         return parts.join(" ");
@@ -1832,8 +1889,10 @@ async function runProject(overrideHtmlFile = null) {
   });
 
   const vfsPayload = JSON.stringify({
-    baseFile: targetHtmlFile,
-    assets: assetMap
+    baseFile: htmlPath,
+    assets: assetMap,
+    pages: htmlPagesMap || {},
+    external: isExternalBrowser
   });
 
   const runtimeHook = `
@@ -1841,7 +1900,7 @@ async function runProject(overrideHtmlFile = null) {
     (function() {
       const VFS = ${vfsPayload};
 
-      function resolveVfsPath(raw) {
+      function resolveFromMap(raw, mapObj) {
         if (!raw || typeof raw !== 'string') return null;
         const trimmed = raw.trim();
         if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
@@ -1857,10 +1916,14 @@ async function runProject(overrideHtmlFile = null) {
           else { work.push(p); }
         }
         const resolved = work.join('/');
-        if (VFS.assets[resolved]) return VFS.assets[resolved];
+        if (mapObj[resolved]) return mapObj[resolved];
         const lower = resolved.toLowerCase();
-        const key = Object.keys(VFS.assets).find(k => k.toLowerCase() === lower);
-        return key ? VFS.assets[key] : null;
+        const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
+        return key ? mapObj[key] : null;
+      }
+
+      function resolveVfsPath(raw) {
+        return resolveFromMap(raw, VFS.assets);
       }
 
       const origFetch = window.fetch;
@@ -1914,46 +1977,74 @@ async function runProject(overrideHtmlFile = null) {
       const origSetAttr = Element.prototype.setAttribute;
       Element.prototype.setAttribute = function(name, val) {
         if (typeof name === 'string' && /^(src|href)$/i.test(name) && typeof val === 'string') {
-          const mapped = resolveVfsPath(val);
-          if (mapped) val = mapped;
+          if (name.toLowerCase() === 'href' && val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
+            const pageUrl = resolveFromMap(val, VFS.pages);
+            if (pageUrl) val = pageUrl;
+          } else {
+            const mapped = resolveVfsPath(val);
+            if (mapped) val = mapped;
+          }
         }
         return origSetAttr.call(this, name, val);
+      };
+
+      const origWinOpen = window.open;
+      window.open = function(url, target, features) {
+        if (typeof url === 'string' && url.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
+          if (!VFS.external && window.parent && window.parent !== window) {
+            window.parent.postMessage({ source: 'pikaedit-navigate', from: VFS.baseFile, to: url }, '*');
+            return null;
+          }
+          const pageUrl = resolveFromMap(url, VFS.pages);
+          if (pageUrl) url = pageUrl;
+        }
+        return origWinOpen.call(this, url, target, features);
       };
 
       document.addEventListener('click', function(e) {
         const anchor = e.target.closest ? e.target.closest('a[href]') : null;
         if (!anchor) return;
         const href = anchor.getAttribute('href');
-        if (!href || /^(https?:|mailto:|tel:|#|javascript:)/i.test(href)) return;
+        if (!href || /^(https?:|mailto:|tel:|#|javascript:|blob:)/i.test(href)) return;
         if (href.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-          e.preventDefault();
-          window.parent.postMessage({
-            source: 'pikaedit-navigate',
-            from: VFS.baseFile,
-            to: href
-          }, '*');
+          if (!VFS.external && window.parent && window.parent !== window) {
+            e.preventDefault();
+            window.parent.postMessage({
+              source: 'pikaedit-navigate',
+              from: VFS.baseFile,
+              to: href
+            }, '*');
+          } else if (VFS.external) {
+            const pageUrl = resolveFromMap(href, VFS.pages);
+            if (pageUrl) {
+              e.preventDefault();
+              window.location.href = pageUrl;
+            }
+          }
         }
       });
 
-      const send = (type, args) => {
-        try {
-          const formatted = Array.from(args).map(a => {
-            if (a instanceof Error) return a.name + ': ' + a.message;
-            if (typeof a === 'object' && a !== null) return JSON.stringify(a);
-            return String(a);
-          }).join(' ');
-          window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
-        } catch(e) {}
-      };
-      const origLog = console.log;
-      const origWarn = console.warn;
-      const origError = console.error;
-      console.log = function() { send('info', arguments); origLog.apply(console, arguments); };
-      console.warn = function() { send('warn', arguments); origWarn.apply(console, arguments); };
-      console.error = function() { send('error', arguments); origError.apply(console, arguments); };
-      window.onerror = function(msg, src, line) {
-        send('error', [msg + ' (Line ' + line + ')']);
-      };
+      if (!VFS.external && window.parent && window.parent !== window) {
+        const send = (type, args) => {
+          try {
+            const formatted = Array.from(args).map(a => {
+              if (a instanceof Error) return a.name + ': ' + a.message;
+              if (typeof a === 'object' && a !== null) return JSON.stringify(a);
+              return String(a);
+            }).join(' ');
+            window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
+          } catch(e) {}
+        };
+        const origLog = console.log;
+        const origWarn = console.warn;
+        const origError = console.error;
+        console.log = function() { send('info', arguments); origLog.apply(console, arguments); };
+        console.warn = function() { send('warn', arguments); origWarn.apply(console, arguments); };
+        console.error = function() { send('error', arguments); origError.apply(console, arguments); };
+        window.onerror = function(msg, src, line) {
+          send('error', [msg + ' (Line ' + line + ')']);
+        };
+      }
     })();
   <\/script>`;
 
@@ -1963,17 +2054,128 @@ async function runProject(overrideHtmlFile = null) {
     htmlContent = runtimeHook + htmlContent;
   }
 
+  return htmlContent;
+}
+
+function buildAssetMap(bucket) {
+  const assetMap = {};
+  for (const [path, content] of Object.entries(files)) {
+    const lower = path.toLowerCase();
+    if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
+    if (typeof content === "string" && content.startsWith("data:")) {
+      assetMap[path] = content;
+    } else {
+      assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
+    }
+  }
+
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.toLowerCase().endsWith(".css")) continue;
+    const rewrittenCss = rewriteCssContent(content, path, assetMap);
+    assetMap[path] = createTrackedBlobUrl(rewrittenCss, "text/css", bucket);
+  }
+
+  return assetMap;
+}
+
+async function runProject(overrideHtmlFile = null) {
+  clearConsole();
+  revokePreviousBlobs();
+  togglePreviewDropdown(false);
+
+  const targetHtmlFile =
+    (overrideHtmlFile && files[overrideHtmlFile] !== undefined ? overrideHtmlFile : null) ||
+    findContextualHtml();
+
+  if (!targetHtmlFile) {
+    await showCozyPopup({
+      title: "No HTML File",
+      message: "Please create or select an .html file to run your project.",
+      icon: "📄",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
+    return;
+  }
+
+  currentPreviewHtmlFile = targetHtmlFile;
+  previewTitle.textContent = targetHtmlFile;
+
+  const assetMap = buildAssetMap(activeBlobUrls);
+  const htmlContent = compileSingleHtmlDocument(targetHtmlFile, assetMap, null, false);
+
   previewFrame.srcdoc = htmlContent;
   previewModal.classList.remove("hidden");
 }
 
+async function openInDeviceBrowser() {
+  togglePreviewDropdown(false);
+
+  const targetHtmlFile =
+    (currentPreviewHtmlFile && files[currentPreviewHtmlFile] !== undefined ? currentPreviewHtmlFile : null) ||
+    findContextualHtml();
+
+  if (!targetHtmlFile) {
+    await showCozyPopup({
+      title: "No HTML File",
+      message: "Please create or select an .html file first.",
+      icon: "🌐",
+      tone: "warn",
+      mode: "alert",
+      confirmText: "OK"
+    });
+    return;
+  }
+
+  revokeBrowserTabBlobs();
+
+  const assetMap = buildAssetMap(browserTabBlobUrls);
+  const htmlPagesMap = {};
+  const allHtmlPaths = Object.keys(files).filter((p) => {
+    const l = p.toLowerCase();
+    return l.endsWith(".html") || l.endsWith(".htm");
+  });
+
+  for (const hPath of allHtmlPaths) {
+    const initialHtml = compileSingleHtmlDocument(hPath, assetMap, null, true);
+    htmlPagesMap[hPath] = createTrackedBlobUrl(initialHtml, "text/html", browserTabBlobUrls);
+  }
+
+  for (const hPath of allHtmlPaths) {
+    const linkedHtml = compileSingleHtmlDocument(hPath, assetMap, htmlPagesMap, true);
+    const oldUrl = htmlPagesMap[hPath];
+    htmlPagesMap[hPath] = createTrackedBlobUrl(linkedHtml, "text/html", browserTabBlobUrls);
+    try {
+      URL.revokeObjectURL(oldUrl);
+    } catch (e) {}
+  }
+
+  const entryUrl = htmlPagesMap[targetHtmlFile];
+  if (!entryUrl) return;
+
+  const link = document.createElement("a");
+  link.href = entryUrl;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(revokeBrowserTabBlobs, 180000);
+}
+
+openBrowserBtn.addEventListener("click", openInDeviceBrowser);
+
 runBtn.addEventListener("click", () => runProject());
-reloadPreviewBtn.addEventListener("click", () => runProject());
+reloadPreviewBtn.addEventListener("click", () => runProject(currentPreviewHtmlFile));
 
 closePreviewBtn.addEventListener("click", () => {
+  togglePreviewDropdown(false);
   exitAppFullscreen();
   previewModal.classList.add("hidden");
   previewFrame.srcdoc = "";
+  currentPreviewHtmlFile = null;
   revokePreviousBlobs();
 });
 
@@ -2030,31 +2232,57 @@ sidebarBackdrop.addEventListener("click", closeMobileSidebar);
 // BOOTSTRAP WORKSPACE FROM INDEXEDDB
 // =========================================================================
 (async function initWorkspace() {
-  const [savedFiles, savedFolders, savedActive] = await Promise.all([
+  const [savedWorkspaces, savedSlotIdx, savedFiles, savedFolders, savedActive] = await Promise.all([
+    idbGet("workspaces_v1"),
+    idbGet("currentSlotIndex_v1"),
     idbGet("files"),
     idbGet("folders"),
     idbGet("activeFile")
   ]);
 
-  if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
-    files = savedFiles;
+  if (Array.isArray(savedWorkspaces) && savedWorkspaces.length > 0) {
+    workspaces = savedWorkspaces;
+    currentSlotIndex =
+      typeof savedSlotIdx === "number" && savedSlotIdx >= 0 && savedSlotIdx < workspaces.length
+        ? savedSlotIdx
+        : 0;
+    const slot = workspaces[currentSlotIndex];
+    files = slot.files && Object.keys(slot.files).length > 0 ? slot.files : { "index.html": "" };
+    emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
+    expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
+    activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
   } else {
-    try {
-      const legacyFolders = window.localStorage.getItem(FOLDERS_KEY);
-      if (legacyFolders) emptyFolders = JSON.parse(legacyFolders);
-    } catch (e) {}
+    if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
+      files = savedFiles;
+    } else {
+      try {
+        const legacyFolders = window.localStorage.getItem(FOLDERS_KEY);
+        if (legacyFolders) emptyFolders = JSON.parse(legacyFolders);
+      } catch (e) {}
+    }
+
+    if (Array.isArray(savedFolders)) {
+      emptyFolders = savedFolders;
+    }
+
+    if (savedActive && savedActive in files) {
+      activeFile = savedActive;
+    } else {
+      activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
+    }
+
+    workspaces = [
+      {
+        files,
+        emptyFolders,
+        expandedFolders: Array.from(expandedFolders),
+        activeFile
+      }
+    ];
+    currentSlotIndex = 0;
     await persistNow();
   }
 
-  if (Array.isArray(savedFolders)) {
-    emptyFolders = savedFolders;
-  }
-
-  if (savedActive && savedActive in files) {
-    activeFile = savedActive;
-  } else {
-    activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
-  }
-
+  updateSlotBarUI();
   openFile(activeFile, { syncTree: true, persist: false });
 })();
