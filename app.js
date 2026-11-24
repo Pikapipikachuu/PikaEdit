@@ -299,6 +299,7 @@ const symbolBarState = document.getElementById("symbolBarState");
 const menuWordWrapBtn = document.getElementById("menuWordWrapBtn");
 const wordWrapState = document.getElementById("wordWrapState");
 const menuFindBtn = document.getElementById("menuFindBtn");
+const menuDeleteRangeBtn = document.getElementById("menuDeleteRangeBtn");
 const menuCopyAllBtn = document.getElementById("menuCopyAllBtn");
 const menuImportZipBtn = document.getElementById("menuImportZipBtn");
 const menuSaveZipBtn = document.getElementById("menuSaveZipBtn");
@@ -605,6 +606,87 @@ function runFindSearch(step = 0) {
 findInput.addEventListener("input", () => runFindSearch(0));
 findNextBtn.addEventListener("click", () => runFindSearch(1));
 findPrevBtn.addEventListener("click", () => runFindSearch(-1));
+
+// Delete Text Range (From Start Text -> Until End Text)
+if (menuDeleteRangeBtn) {
+  menuDeleteRangeBtn.addEventListener("click", async () => {
+    toggleWaDropdown(false);
+    if (codeEditor.classList.contains("hidden")) return;
+
+    const currentSelection = codeEditor.value.substring(
+      codeEditor.selectionStart || 0,
+      codeEditor.selectionEnd || 0
+    );
+
+    const startQuery = await showCozyPopup({
+      title: "Delete From Text",
+      message: "Enter starting text/code where deletion should begin:",
+      icon: "✂️",
+      tone: "warn",
+      mode: "prompt",
+      placeholder: "Start text...",
+      defaultValue: currentSelection || "",
+      confirmText: "Next",
+      cancelText: "Cancel"
+    });
+    if (!startQuery) return;
+
+    const endQuery = await showCozyPopup({
+      title: "Delete Until Text",
+      message: "Enter ending text/code up to which text should be deleted:",
+      icon: "✂️",
+      tone: "danger",
+      mode: "prompt",
+      placeholder: "End text...",
+      defaultValue: "",
+      confirmText: "Delete",
+      cancelText: "Cancel"
+    });
+    if (!endQuery) return;
+
+    const text = codeEditor.value;
+    const startIdx = text.indexOf(startQuery);
+    if (startIdx === -1) {
+      await showCozyPopup({
+        title: "Not Found",
+        message: "Start text was not found in the current file.",
+        icon: "⚠️",
+        tone: "warn",
+        mode: "alert",
+        confirmText: "OK"
+      });
+      return;
+    }
+
+    const endSearchFrom = startIdx + startQuery.length;
+    const endMatchIdx = text.indexOf(endQuery, endSearchFrom);
+    if (endMatchIdx === -1) {
+      await showCozyPopup({
+        title: "End Not Found",
+        message: "End text was not found after the starting text.",
+        icon: "⚠️",
+        tone: "warn",
+        mode: "alert",
+        confirmText: "OK"
+      });
+      return;
+    }
+
+    const deleteEndIdx = endMatchIdx + endQuery.length;
+    recordUndoSnapshot(activeFile, text);
+
+    const updated = text.slice(0, startIdx) + text.slice(deleteEndIdx);
+    codeEditor.value = updated;
+    files[activeFile] = updated;
+    recordUndoSnapshot(activeFile, updated);
+
+    codeEditor.focus();
+    codeEditor.setSelectionRange(startIdx, startIdx);
+    saveWorkspace();
+    updateLineNumbers(true);
+    updateCursorStatus();
+  });
+}
 
 // Copy All Code
 menuCopyAllBtn.addEventListener("click", async () => {
@@ -1886,208 +1968,6 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
     return `<style${attrs}>${rewrittenInline}</style>`;
   });
 
-  htmlContent = htmlContent.replace(
-    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
-    (match, attr, quote, rawPath) => {
-      const resolved = resolvePath(htmlPath, rawPath);
-      if (!resolved) return match;
-
-      if (attr.toLowerCase() === "href" && resolved.toLowerCase().endsWith(".html")) {
-        if (isExternalBrowser && htmlPagesMap) {
-          const mappedPage = lookupAssetUrl(resolved, htmlPagesMap);
-          if (mappedPage) return `${attr}=${quote}${mappedPage}${quote}`;
-        }
-        return match;
-      }
-
-      const mapped = lookupAssetUrl(resolved, assetMap);
-      if (mapped) {
-        return `${attr}=${quote}${mapped}${quote}`;
-      }
-      return match;
-    }
-  );
-
-  htmlContent = htmlContent.replace(/\bsrcset\s*=\s*(["'])([^"']+)\1/gi, (match, quote, srcsetVal) => {
-    const rewrittenSet = srcsetVal
-      .split(",")
-      .map((item) => {
-        const parts = item.trim().split(/\s+/);
-        if (!parts[0]) return item;
-        const resolved = resolvePath(htmlPath, parts[0]);
-        const mapped = lookupAssetUrl(resolved, assetMap);
-        if (mapped) parts[0] = mapped;
-        return parts.join(" ");
-      })
-      .join(", ");
-    return `srcset=${quote}${rewrittenSet}${quote}`;
-  });
-
-  const vfsPayload = JSON.stringify({
-    baseFile: htmlPath,
-    assets: assetMap,
-    pages: htmlPagesMap || {},
-    external: isExternalBrowser
-  });
-
-  const runtimeHook = `
-  <script>
-    (function() {
-      const VFS = ${vfsPayload};
-
-      function resolveFromMap(raw, mapObj) {
-        if (!raw || typeof raw !== 'string') return null;
-        const trimmed = raw.trim();
-        if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-        const clean = trimmed.split('?')[0].split('#')[0].replace(/\\\\/g, '/');
-        if (!clean) return null;
-        const baseParts = VFS.baseFile.split('/');
-        baseParts.pop();
-        const work = clean.startsWith('/') ? [] : baseParts;
-        const parts = clean.replace(/^\\/+/, '').split('/');
-        for (const p of parts) {
-          if (p === '.' || p === '') continue;
-          if (p === '..') { if (work.length > 0) work.pop(); }
-          else { work.push(p); }
-        }
-        const resolved = work.join('/');
-        if (mapObj[resolved]) return mapObj[resolved];
-        const lower = resolved.toLowerCase();
-        const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
-        if (key) return mapObj[key];
-
-        const baseName = lower.split('/').pop();
-        if (baseName) {
-          const fallbackKey = Object.keys(mapObj).find(k => k.toLowerCase().split('/').pop() === baseName);
-          if (fallbackKey) return mapObj[fallbackKey];
-        }
-        return null;
-      }
-
-      function resolveVfsPath(raw) {
-        return resolveFromMap(raw, VFS.assets);
-      }
-
-      const origFetch = window.fetch;
-      if (origFetch) {
-        window.fetch = function(input, init) {
-          if (typeof input === 'string') {
-            const mapped = resolveVfsPath(input);
-            if (mapped) input = mapped;
-          }
-          return origFetch.call(this, input, init);
-        };
-      }
-
-      const origXhrOpen = XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open = function(method, url) {
-        if (typeof url === 'string') {
-          const mapped = resolveVfsPath(url);
-          if (mapped) arguments[1] = mapped;
-        }
-        return origXhrOpen.apply(this, arguments);
-      };
-
-      const OrigAudio = window.Audio;
-      if (OrigAudio) {
-        window.Audio = function(src) {
-          const mapped = resolveVfsPath(src);
-          return new OrigAudio(mapped || src);
-        };
-        window.Audio.prototype = OrigAudio.prototype;
-      }
-
-      function hookSrcProperty(Proto) {
-        if (!Proto) return;
-        const desc = Object.getOwnPropertyDescriptor(Proto, 'src');
-        if (desc && desc.set) {
-          Object.defineProperty(Proto, 'src', {
-            get: desc.get,
-            set: function(val) {
-              const mapped = resolveVfsPath(val);
-              return desc.set.call(this, mapped || val);
-            },
-            configurable: true
-          });
-        }
-      }
-      hookSrcProperty(HTMLImageElement.prototype);
-      hookSrcProperty(HTMLMediaElement.prototype);
-      hookSrcProperty(HTMLScriptElement.prototype);
-      hookSrcProperty(HTMLSourceElement.prototype);
-
-      const origSetAttr = Element.prototype.setAttribute;
-      Element.prototype.setAttribute = function(name, val) {
-        if (typeof name === 'string' && /^(src|href)$/i.test(name) && typeof val === 'string') {
-          if (name.toLowerCase() === 'href' && val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-            const pageUrl = resolveFromMap(val, VFS.pages);
-            if (pageUrl) val = pageUrl;
-          } else {
-            const mapped = resolveVfsPath(val);
-            if (mapped) val = mapped;
-          }
-        }
-        return origSetAttr.call(this, name, val);
-      };
-
-      const origWinOpen = window.open;
-      window.open = function(url, target, features) {
-        if (typeof url === 'string' && url.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-          if (!VFS.external && window.parent && window.parent !== window) {
-            window.parent.postMessage({ source: 'pikaedit-navigate', from: VFS.baseFile, to: url }, '*');
-            return null;
-          }
-          const pageUrl = resolveFromMap(url, VFS.pages);
-          if (pageUrl) url = pageUrl;
-        }
-        return origWinOpen.call(this, url, target, features);
-      };
-
-      document.addEventListener('click', function(e) {
-        const anchor = e.target.closest ? e.target.closest('a[href]') : null;
-        if (!anchor) return;
-        const href = anchor.getAttribute('href');
-        if (!href || /^(https?:|mailto:|tel:|#|javascript:|blob:)/i.test(href)) return;
-        if (href.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-          if (!VFS.external && window.parent && window.parent !== window) {
-            e.preventDefault();
-            window.parent.postMessage({
-              source: 'pikaedit-navigate',
-              from: VFS.baseFile,
-              to: href
-            }, '*');
-          } else if (VFS.external) {
-            const pageUrl = resolveFromMap(href, VFS.pages);
-            if (pageUrl) {
-              e.preventDefault();
-              window.location.href = pageUrl;
-            }
-          }
-        }
-      });
-
-      if (!VFS.external && window.parent && window.parent !== window) {
-        const send = (type, args) => {
-          try {
-            const formatted = Array.from(args).map(a => {
-              if (a instanceof Error) return a.name + ': ' + a.message;
-              if (typeof a === 'object' && a !== null) return JSON.stringify(a);
-              return String(a);
-            }).join(' ');
-            window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
-          } catch(e) {}
-        };
-        const origLog = console.log;
-        const origWarn = console.warn;
-        const origError = console.error;
-function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
-  let htmlContent = files[htmlPath];
-
-  htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, cssBody) => {
-    const rewrittenInline = rewriteCssContent(cssBody, htmlPath, assetMap);
-    return `<style${attrs}>${rewrittenInline}</style>`;
-  });
-
   // Rewrite inline style="... url(...) ..." attributes
   htmlContent = htmlContent.replace(
     /\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi,
@@ -2393,7 +2273,6 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
 
   return htmlContent;
 }
-
 
 function buildAssetMap(bucket) {
   const assetMap = {};
