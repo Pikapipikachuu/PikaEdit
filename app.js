@@ -1886,6 +1886,16 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
     return `<style${attrs}>${rewrittenInline}</style>`;
   });
 
+  // Rewrite inline style="... url(...) ..." attributes
+  htmlContent = htmlContent.replace(
+    /\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi,
+    (match, quote, styleBody) => {
+      if (!/url\s*\(/i.test(styleBody)) return match;
+      const rewrittenStyle = rewriteCssContent(styleBody, htmlPath, assetMap);
+      return `style=${quote}${rewrittenStyle}${quote}`;
+    }
+  );
+
   htmlContent = htmlContent.replace(
     /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
     (match, attr, quote, rawPath) => {
@@ -1934,13 +1944,15 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
   <script>
     (function() {
       const VFS = ${vfsPayload};
+      const warnedMissing = new Set();
 
-      function resolveFromMap(raw, mapObj) {
+      function resolveFromMap(raw, mapObj, logMissing = false) {
         if (!raw || typeof raw !== 'string') return null;
         const trimmed = raw.trim();
         if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
         const clean = trimmed.split('?')[0].split('#')[0].replace(/\\\\/g, '/');
         if (!clean) return null;
+
         const baseParts = VFS.baseFile.split('/');
         baseParts.pop();
         const work = clean.startsWith('/') ? [] : baseParts;
@@ -1952,6 +1964,7 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
         }
         const resolved = work.join('/');
         if (mapObj[resolved]) return mapObj[resolved];
+
         const lower = resolved.toLowerCase();
         const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
         if (key) return mapObj[key];
@@ -1961,18 +1974,37 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
           const fallbackKey = Object.keys(mapObj).find(k => k.toLowerCase().split('/').pop() === baseName);
           if (fallbackKey) return mapObj[fallbackKey];
         }
+
+        if (logMissing && /\\.(png|jpe?g|webp|gif|svg|ico|mp3|wav|ogg)$/i.test(clean) && !warnedMissing.has(clean)) {
+          warnedMissing.add(clean);
+          console.warn('VFS asset miss:', clean, '| available:', Object.keys(mapObj).slice(0, 8));
+        }
         return null;
       }
 
-      function resolveVfsPath(raw) {
-        return resolveFromMap(raw, VFS.assets);
+      function resolveVfsPath(raw, logMissing = false) {
+        return resolveFromMap(raw, VFS.assets, logMissing);
+      }
+
+      function applyStyleBackgroundFix(el) {
+        if (!el || !el.style) return;
+        const bg = el.style.backgroundImage;
+        if (bg && bg.includes('url(')) {
+          const fixedBg = bg.replace(/url\\(\\s*(['"]?)([^'"()]+)\\1\\s*\\)/gi, (m, q, innerUrl) => {
+            const mapped = resolveVfsPath(innerUrl, true);
+            return mapped ? 'url("' + mapped + '")' : m;
+          });
+          if (fixedBg !== bg) {
+            el.style.backgroundImage = fixedBg;
+          }
+        }
       }
 
       const origFetch = window.fetch;
       if (origFetch) {
         window.fetch = function(input, init) {
           if (typeof input === 'string') {
-            const mapped = resolveVfsPath(input);
+            const mapped = resolveVfsPath(input, false);
             if (mapped) input = mapped;
           }
           return origFetch.call(this, input, init);
@@ -1982,7 +2014,7 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
       const origXhrOpen = XMLHttpRequest.prototype.open;
       XMLHttpRequest.prototype.open = function(method, url) {
         if (typeof url === 'string') {
-          const mapped = resolveVfsPath(url);
+          const mapped = resolveVfsPath(url, false);
           if (mapped) arguments[1] = mapped;
         }
         return origXhrOpen.apply(this, arguments);
@@ -1991,7 +2023,7 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
       const OrigAudio = window.Audio;
       if (OrigAudio) {
         window.Audio = function(src) {
-          const mapped = resolveVfsPath(src);
+          const mapped = resolveVfsPath(src, true);
           return new OrigAudio(mapped || src);
         };
         window.Audio.prototype = OrigAudio.prototype;
@@ -2004,7 +2036,7 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
           Object.defineProperty(Proto, 'src', {
             get: desc.get,
             set: function(val) {
-              const mapped = resolveVfsPath(val);
+              const mapped = resolveVfsPath(val, true);
               return desc.set.call(this, mapped || val);
             },
             configurable: true
@@ -2018,17 +2050,78 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
 
       const origSetAttr = Element.prototype.setAttribute;
       Element.prototype.setAttribute = function(name, val) {
-        if (typeof name === 'string' && /^(src|href)$/i.test(name) && typeof val === 'string') {
-          if (name.toLowerCase() === 'href' && val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-            const pageUrl = resolveFromMap(val, VFS.pages);
-            if (pageUrl) val = pageUrl;
-          } else {
-            const mapped = resolveVfsPath(val);
+        if (typeof name === 'string' && typeof val === 'string') {
+          if (/^(src|poster)$/i.test(name)) {
+            const mapped = resolveVfsPath(val, true);
             if (mapped) val = mapped;
+          } else if (/^href$/i.test(name)) {
+            if (val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
+              const pageUrl = resolveFromMap(val, VFS.pages, false);
+              if (pageUrl) val = pageUrl;
+            } else {
+              const mapped = resolveVfsPath(val, false);
+              if (mapped) val = mapped;
+            }
+          } else if (/^style$/i.test(name) && /url\\s*\\(/i.test(val)) {
+            val = val.replace(/url\\(\\s*(['"]?)([^'"()]+)\\1\\s*\\)/gi, (m, q, innerUrl) => {
+              const mapped = resolveVfsPath(innerUrl, true);
+              return mapped ? 'url("' + mapped + '")' : m;
+            });
           }
         }
-        return origSetAttr.call(this, name, val);
+        const res = origSetAttr.call(this, name, val);
+        if (typeof name === 'string' && /^style$/i.test(name)) {
+          applyStyleBackgroundFix(this);
+        }
+        return res;
       };
+
+      if (window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype.drawImage) {
+        const origDrawImage = CanvasRenderingContext2D.prototype.drawImage;
+        CanvasRenderingContext2D.prototype.drawImage = function(img) {
+          if (img && img.tagName === 'IMG') {
+            const rawAttr = img.getAttribute && img.getAttribute('src');
+            if (rawAttr && !/^data:|^blob:|^https?:/i.test(rawAttr.trim())) {
+              const mapped = resolveVfsPath(rawAttr, true);
+              if (mapped && img.src !== mapped) {
+                img.src = mapped;
+              }
+            }
+          }
+          return origDrawImage.apply(this, arguments);
+        };
+      }
+
+      if (window.MutationObserver) {
+        const mo = new MutationObserver((mutations) => {
+          for (const mut of mutations) {
+            for (const node of mut.addedNodes || []) {
+              if (!node || node.nodeType !== 1) continue;
+              if (node.tagName === 'IMG') {
+                const rawSrc = node.getAttribute('src');
+                if (rawSrc && !/^data:|^blob:|^https?:/i.test(rawSrc.trim())) {
+                  const mapped = resolveVfsPath(rawSrc, true);
+                  if (mapped && node.src !== mapped) node.src = mapped;
+                }
+              }
+              applyStyleBackgroundFix(node);
+              const imgs = node.querySelectorAll ? node.querySelectorAll('img[src]') : [];
+              for (const childImg of imgs) {
+                const rawChildSrc = childImg.getAttribute('src');
+                if (rawChildSrc && !/^data:|^blob:|^https?:/i.test(rawChildSrc.trim())) {
+                  const mappedChild = resolveVfsPath(rawChildSrc, true);
+                  if (mappedChild && childImg.src !== mappedChild) childImg.src = mappedChild;
+                }
+              }
+            }
+          }
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+          if (document.body) {
+            mo.observe(document.body, { childList: true, subtree: true });
+          }
+        });
+      }
 
       const origWinOpen = window.open;
       window.open = function(url, target, features) {
@@ -2037,7 +2130,7 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
             window.parent.postMessage({ source: 'pikaedit-navigate', from: VFS.baseFile, to: url }, '*');
             return null;
           }
-          const pageUrl = resolveFromMap(url, VFS.pages);
+          const pageUrl = resolveFromMap(url, VFS.pages, false);
           if (pageUrl) url = pageUrl;
         }
         return origWinOpen.call(this, url, target, features);
@@ -2057,7 +2150,7 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
               to: href
             }, '*');
           } else if (VFS.external) {
-            const pageUrl = resolveFromMap(href, VFS.pages);
+            const pageUrl = resolveFromMap(href, VFS.pages, false);
             if (pageUrl) {
               e.preventDefault();
               window.location.href = pageUrl;
@@ -2098,236 +2191,3 @@ function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isEx
 
   return htmlContent;
 }
-
-function buildAssetMap(bucket) {
-  const assetMap = {};
-  for (const [path, content] of Object.entries(files)) {
-    const lower = path.toLowerCase();
-    if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
-
-    if (isMediaOrImageFile(path)) {
-      assetMap[path] = toSafeDataUrl(content, path);
-    } else if (typeof content === "string" && content.startsWith("data:")) {
-      assetMap[path] = content;
-    } else {
-      assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
-    }
-  }
-
-  for (const [path, content] of Object.entries(files)) {
-    if (!path.toLowerCase().endsWith(".css")) continue;
-    const rewrittenCss = rewriteCssContent(content, path, assetMap);
-    assetMap[path] = createTrackedBlobUrl(rewrittenCss, "text/css", bucket);
-  }
-
-  return assetMap;
-}
-
-async function runProject(overrideHtmlFile = null) {
-  clearConsole();
-  revokePreviousBlobs();
-  togglePreviewDropdown(false);
-
-  const targetHtmlFile =
-    (overrideHtmlFile && files[overrideHtmlFile] !== undefined ? overrideHtmlFile : null) ||
-    findContextualHtml();
-
-  if (!targetHtmlFile) {
-    await showCozyPopup({
-      title: "No HTML File",
-      message: "Please create or select an .html file to run your project.",
-      icon: "📄",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return;
-  }
-
-  currentPreviewHtmlFile = targetHtmlFile;
-  previewTitle.textContent = targetHtmlFile;
-
-  const assetMap = buildAssetMap(activeBlobUrls);
-  const htmlContent = compileSingleHtmlDocument(targetHtmlFile, assetMap, null, false);
-
-  previewFrame.srcdoc = htmlContent;
-  previewModal.classList.remove("hidden");
-}
-
-async function openInDeviceBrowser() {
-  togglePreviewDropdown(false);
-
-  const targetHtmlFile =
-    (currentPreviewHtmlFile && files[currentPreviewHtmlFile] !== undefined ? currentPreviewHtmlFile : null) ||
-    findContextualHtml();
-
-  if (!targetHtmlFile) {
-    await showCozyPopup({
-      title: "No HTML File",
-      message: "Please create or select an .html file first.",
-      icon: "🌐",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return;
-  }
-
-  revokeBrowserTabBlobs();
-
-  const assetMap = buildAssetMap(browserTabBlobUrls);
-  const htmlPagesMap = {};
-  const allHtmlPaths = Object.keys(files).filter((p) => {
-    const l = p.toLowerCase();
-    return l.endsWith(".html") || l.endsWith(".htm");
-  });
-
-  for (const hPath of allHtmlPaths) {
-    const initialHtml = compileSingleHtmlDocument(hPath, assetMap, null, true);
-    htmlPagesMap[hPath] = createTrackedBlobUrl(initialHtml, "text/html", browserTabBlobUrls);
-  }
-
-  for (const hPath of allHtmlPaths) {
-    const linkedHtml = compileSingleHtmlDocument(hPath, assetMap, htmlPagesMap, true);
-    const oldUrl = htmlPagesMap[hPath];
-    htmlPagesMap[hPath] = createTrackedBlobUrl(linkedHtml, "text/html", browserTabBlobUrls);
-    try {
-      URL.revokeObjectURL(oldUrl);
-    } catch (e) {}
-  }
-
-  const entryUrl = htmlPagesMap[targetHtmlFile];
-  if (!entryUrl) return;
-
-  const link = document.createElement("a");
-  link.href = entryUrl;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  setTimeout(revokeBrowserTabBlobs, 180000);
-}
-
-openBrowserBtn.addEventListener("click", openInDeviceBrowser);
-
-runBtn.addEventListener("click", () => runProject());
-reloadPreviewBtn.addEventListener("click", () => runProject(currentPreviewHtmlFile));
-
-closePreviewBtn.addEventListener("click", () => {
-  togglePreviewDropdown(false);
-  exitAppFullscreen();
-  previewModal.classList.add("hidden");
-  previewFrame.srcdoc = "";
-  currentPreviewHtmlFile = null;
-  revokePreviousBlobs();
-});
-
-window.addEventListener("message", (event) => {
-  if (!event.data) return;
-  if (event.data.source === "pikaedit-console") {
-    appendConsoleLog(event.data.type, event.data.message);
-  } else if (event.data.source === "pikaedit-navigate") {
-    const targetPath = resolvePath(event.data.from, event.data.to);
-    if (targetPath && files[targetPath] !== undefined) {
-      runProject(targetPath);
-    } else {
-      appendConsoleLog("warn", `Page not found: ${event.data.to}`);
-    }
-  }
-});
-
-function appendConsoleLog(type, text) {
-  logCount++;
-  consoleBadge.textContent = logCount;
-  const div = document.createElement("div");
-  div.className = `log-line log-${type}`;
-  div.textContent = `> ${text}`;
-  consoleLogs.appendChild(div);
-  consoleLogs.scrollTop = consoleLogs.scrollHeight;
-}
-
-function clearConsole() {
-  logCount = 0;
-  consoleBadge.textContent = "0";
-  consoleLogs.innerHTML = "";
-}
-
-consoleToggleBtn.addEventListener("click", () => {
-  consolePanel.classList.toggle("hidden");
-});
-
-clearConsoleBtn.addEventListener("click", clearConsole);
-
-// Mobile Drawer Controls
-function closeMobileSidebar() {
-  sidebar.classList.remove("open");
-  sidebarBackdrop.classList.remove("show");
-}
-
-menuBtn.addEventListener("click", () => {
-  sidebar.classList.toggle("open");
-  sidebarBackdrop.classList.toggle("show");
-});
-
-sidebarBackdrop.addEventListener("click", closeMobileSidebar);
-
-// =========================================================================
-// BOOTSTRAP WORKSPACE FROM INDEXEDDB
-// =========================================================================
-(async function initWorkspace() {
-  const [savedWorkspaces, savedSlotIdx, savedFiles, savedFolders, savedActive] = await Promise.all([
-    idbGet("workspaces_v1"),
-    idbGet("currentSlotIndex_v1"),
-    idbGet("files"),
-    idbGet("folders"),
-    idbGet("activeFile")
-  ]);
-
-  if (Array.isArray(savedWorkspaces) && savedWorkspaces.length > 0) {
-    workspaces = savedWorkspaces;
-    currentSlotIndex =
-      typeof savedSlotIdx === "number" && savedSlotIdx >= 0 && savedSlotIdx < workspaces.length
-        ? savedSlotIdx
-        : 0;
-    const slot = workspaces[currentSlotIndex];
-    files = slot.files && Object.keys(slot.files).length > 0 ? slot.files : { "index.html": "" };
-    emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
-    expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
-    activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
-  } else {
-    if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
-      files = savedFiles;
-    } else {
-      try {
-        const legacyFolders = window.localStorage.getItem(FOLDERS_KEY);
-        if (legacyFolders) emptyFolders = JSON.parse(legacyFolders);
-      } catch (e) {}
-    }
-
-    if (Array.isArray(savedFolders)) {
-      emptyFolders = savedFolders;
-    }
-
-    if (savedActive && savedActive in files) {
-      activeFile = savedActive;
-    } else {
-      activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
-    }
-
-    workspaces = [
-      {
-        files,
-        emptyFolders,
-        expandedFolders: Array.from(expandedFolders),
-        activeFile
-      }
-    ];
-    currentSlotIndex = 0;
-    await persistNow();
-  }
-
-  updateSlotBarUI();
-  openFile(activeFile, { syncTree: true, persist: false });
-})();
