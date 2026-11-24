@@ -1780,7 +1780,6 @@ btn.addEventListener("click", () => {
     const FOLDERS_KEY = "pikaedit_folders_v2";
     const ACTIVE_KEY = "pikaedit_active_file_v2";
 
-    // IndexedDB Storage
     const DB_NAME = "PikaEditWorkspaceDB";
     const DB_STORE = "workspace";
     let dbInstance = null;
@@ -1871,7 +1870,6 @@ btn.addEventListener("click", () => {
     let isMultiSelectMode = false;
     let selectedPaths = new Set();
 
-    // DOM References
     const undoBtn = document.getElementById("undoBtn");
     const redoBtn = document.getElementById("redoBtn");
     const moreMenuBtn = document.getElementById("moreMenuBtn");
@@ -1895,7 +1893,6 @@ btn.addEventListener("click", () => {
     const fileTabsBar = document.getElementById("fileTabsBar");
     const symbolBar = document.getElementById("symbolBar");
 
-    // Find & Replace DOM
     const findBar = document.getElementById("findBar");
     const findInput = document.getElementById("findInput");
     const findCount = document.getElementById("findCount");
@@ -1908,7 +1905,6 @@ btn.addEventListener("click", () => {
     const replaceInput = document.getElementById("replaceInput");
     const executeReplaceBtn = document.getElementById("executeReplaceBtn");
 
-    // Visual Delete Range DOM
     const rangeBar = document.getElementById("rangeBar");
     const rangeStartInput = document.getElementById("rangeStartInput");
     const rangeStartCount = document.getElementById("rangeStartCount");
@@ -1923,7 +1919,6 @@ btn.addEventListener("click", () => {
     const rangeEndNextBtn = document.getElementById("rangeEndNextBtn");
     const executeRangeDeleteBtn = document.getElementById("executeRangeDeleteBtn");
 
-    // Explorer & Editor DOM
     const sidebar = document.getElementById("sidebar");
     const sidebarBackdrop = document.getElementById("sidebarBackdrop");
     const menuBtn = document.getElementById("menuBtn");
@@ -1991,7 +1986,6 @@ btn.addEventListener("click", () => {
     const cozyCancelBtn = document.getElementById("cozyCancelBtn");
     const cozyConfirmBtn = document.getElementById("cozyConfirmBtn");
 
-    // Persistence & Multi-Section Management
     function syncCurrentSlotState() {
       if (!workspaces[currentSlotIndex]) {
         workspaces[currentSlotIndex] = createNewSlotObject();
@@ -2010,7 +2004,7 @@ btn.addEventListener("click", () => {
     let saveTimer = null;
     function saveWorkspace() {
       clearTimeout(saveTimer);
-      saveTimer = setTimeout(persistNow, 120);
+      saveTimer = setTimeout(persistNow, 150);
     }
 
     async function persistNow() {
@@ -2079,7 +2073,6 @@ btn.addEventListener("click", () => {
       if (currentSlotIndex > 0) switchWorkspaceSlot(currentSlotIndex - 1, false);
     });
 
-    // Save Button: Downloads ONLY the currently open active file
     saveFileBtn.addEventListener("click", () => {
       if (!activeFile || !(activeFile in files)) return;
       const content = files[activeFile];
@@ -2100,7 +2093,6 @@ btn.addEventListener("click", () => {
       }
     });
 
-    // Undo / Redo Stack
     const undoStack = {};
     const redoStack = {};
     let lastSnapshotTimer = null;
@@ -2149,7 +2141,6 @@ btn.addEventListener("click", () => {
       refreshEditorHighlights();
     });
 
-    // Menus, Privacy Modal & Fullscreen
     function toggleWaDropdown(forceState) {
       const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
       waDropdown.classList.toggle("hidden", !show);
@@ -2259,7 +2250,7 @@ btn.addEventListener("click", () => {
       URL.revokeObjectURL(url);
     });
 
-    // Synced Highlight Engine (Find & Replace + Visual Delete Range)
+    // Synced Highlight Engine (Zero-Lag when idle)
     let activeHighlightMode = null;
     let findMatches = [];
     let findActiveIndex = -1;
@@ -2285,14 +2276,14 @@ btn.addEventListener("click", () => {
     }
 
     function renderHighlightedRanges(ranges) {
-      const text = codeEditor.value || "";
-      if (!ranges || ranges.length === 0) {
-        highlightBackdrop.textContent = text + "\n";
-        highlightBackdrop.scrollTop = codeEditor.scrollTop;
-        highlightBackdrop.scrollLeft = codeEditor.scrollLeft;
+      if (!activeHighlightMode || !ranges || ranges.length === 0) {
+        if (highlightBackdrop.innerHTML !== "") {
+          highlightBackdrop.innerHTML = "";
+        }
         return;
       }
 
+      const text = codeEditor.value || "";
       const sorted = [...ranges].sort((a, b) => a.start - b.start);
       let html = "";
       let cursor = 0;
@@ -2309,8 +2300,19 @@ btn.addEventListener("click", () => {
     }
 
     function refreshEditorHighlights() {
+      if (!activeHighlightMode) {
+        if (highlightBackdrop.innerHTML !== "") {
+          highlightBackdrop.innerHTML = "";
+        }
+        return;
+      }
+
       if (activeHighlightMode === "find") {
         const q = findInput.value;
+        if (!q || findMatches.length === 0) {
+          if (highlightBackdrop.innerHTML !== "") highlightBackdrop.innerHTML = "";
+          return;
+        }
         const ranges = findMatches.map((pos, idx) => ({
           start: pos,
           end: pos + q.length,
@@ -2334,9 +2336,11 @@ btn.addEventListener("click", () => {
             ranges.push({ start: spanStart, end: spanEnd, cls: "hl-range-span" });
           }
         }
+        if (ranges.length === 0) {
+          if (highlightBackdrop.innerHTML !== "") highlightBackdrop.innerHTML = "";
+          return;
+        }
         renderHighlightedRanges(ranges);
-      } else {
-        renderHighlightedRanges([]);
       }
     }
 
@@ -2430,7 +2434,6 @@ btn.addEventListener("click", () => {
       updateFindMatches(false);
     });
 
-    // Visual Delete Range Handlers
     function openRangeBar() {
       closeFindBar();
       toggleWaDropdown(false);
@@ -2578,7 +2581,6 @@ btn.addEventListener("click", () => {
       closeRangeBar();
     });
 
-    // Cozy Dialogs
     function showCozyPopup({
       title = "Notice",
       message = "",
@@ -2653,7 +2655,6 @@ btn.addEventListener("click", () => {
       return await jszipLoadPromise;
     }
 
-    // Explorer Tree, Swipe Gestures & Long-Press Menu
     function renderQuickTabs() {
       fileTabsBar.innerHTML = "";
       const priority = ["index.html", "style.css", "script.js"];
@@ -3039,7 +3040,6 @@ btn.addEventListener("click", () => {
       updateSlotBarUI();
     }
 
-    // Folder Sheet & File Operations
     function openFolderActionSheet(folderPath) {
       sheetTargetFolder = folderPath;
       sheetFolderTitle.textContent = folderPath;
@@ -3192,23 +3192,30 @@ btn.addEventListener("click", () => {
       lineNumbers.textContent = out;
     }
 
+    let lineNumTimer = null;
     codeEditor.addEventListener("input", () => {
-      files[activeFile] = codeEditor.value;
+      const val = codeEditor.value;
+      files[activeFile] = val;
       saveWorkspace();
-      updateLineNumbers();
-      if (activeHighlightMode === "find") updateFindMatches(false);
-      else if (activeHighlightMode === "range") updateRangeStartMatches(false);
-      else refreshEditorHighlights();
+
+      clearTimeout(lineNumTimer);
+      lineNumTimer = setTimeout(() => {
+        updateLineNumbers();
+        if (activeHighlightMode === "find") updateFindMatches(false);
+        else if (activeHighlightMode === "range") updateRangeStartMatches(false);
+      }, 80);
 
       clearTimeout(lastSnapshotTimer);
-      lastSnapshotTimer = setTimeout(() => recordUndoSnapshot(activeFile, codeEditor.value), 450);
+      lastSnapshotTimer = setTimeout(() => recordUndoSnapshot(activeFile, val), 600);
     });
 
     codeEditor.addEventListener("scroll", () => {
       lineNumbers.scrollTop = codeEditor.scrollTop;
-      highlightBackdrop.scrollTop = codeEditor.scrollTop;
-      highlightBackdrop.scrollLeft = codeEditor.scrollLeft;
-    });
+      if (activeHighlightMode) {
+        highlightBackdrop.scrollTop = codeEditor.scrollTop;
+        highlightBackdrop.scrollLeft = codeEditor.scrollLeft;
+      }
+    }, { passive: true });
 
     codeEditor.addEventListener("keydown", (e) => {
       if (e.key === "Tab") {
@@ -3286,7 +3293,6 @@ btn.addEventListener("click", () => {
       openFile("index.html");
     });
 
-    // ZIP Import & File Upload
     const TEXT_EXTS = new Set([
       ".html", ".htm", ".css", ".js", ".mjs", ".cjs", ".ts", ".jsx", ".tsx",
       ".json", ".svg", ".txt", ".md", ".xml", ".csv", ".yml", ".yaml", ".ini", ".env"
@@ -3383,7 +3389,6 @@ btn.addEventListener("click", () => {
       assetUploadInput.value = "";
     });
 
-    // VFS & Live Preview Runner
     function resolvePath(baseFile, targetPath) {
       if (!targetPath) return null;
       const trimmed = targetPath.trim();
