@@ -1,2508 +1,3609 @@
-// Default starter files
-const DEFAULT_FILES = {
-  "index.html": `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Project</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#141824" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>PikaEdit — Code Editor & Live Runner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+  <style>
+    :root {
+      --bg-deep: #0f131d;
+      --bg-panel: #141824;
+      --bg-elevated: #1b2130;
+      --bg-hover: #242c40;
+      --border: #2a3349;
+      --border-soft: #1f2739;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --mint: #10b981;
+      --mint-bright: #34d399;
+      --mint-dark: #042419;
+      --danger: #fb7185;
+      --warn: #fbbf24;
+      --sky: #38bdf8;
+      --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      overscroll-behavior: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100dvh;
+      background: var(--bg-deep);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 1. Top Brand Bar */
+    .brandbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 46px;
+      padding: 0 10px 0 12px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
+      z-index: 30;
+    }
+
+    .brand-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .brand-logo-svg {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    }
+
+    .brand-name {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .brand-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mini-tool-btn, .dots-btn, .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .mini-tool-btn:active, .dots-btn:active, .icon-btn:active {
+      transform: scale(0.95);
+      background: var(--bg-hover);
+    }
+
+    .dots-btn {
+      border-color: transparent;
+      background: transparent;
+      width: 32px;
+    }
+
+    .dots-btn:hover {
+      background: var(--bg-elevated);
+    }
+
+    /* 2. Editor Action Bar: Hamburger left + Save (active file only) & Run right */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 44px;
+      padding: 0 10px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-soft);
+      flex-shrink: 0;
+      z-index: 25;
+    }
+
+    .topbar-left, .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 9px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: transform 0.1s ease, background 0.15s ease;
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+
+    .action-btn.secondary {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+    }
+
+    .action-btn.primary {
+      background: var(--mint);
+      color: var(--mint-dark);
+      border-color: var(--mint);
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.28);
+    }
+
+    /* 3. Scrollable Quick File Tabs Strip */
+    .file-tabs-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--bg-deep);
+      border-bottom: 1px solid var(--border-soft);
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+
+    .file-tabs-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .file-tab-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .file-tab-pill.active {
+      background: rgba(16, 185, 129, 0.14);
+      border-color: rgba(16, 185, 129, 0.55);
+      color: var(--mint-bright);
+      font-weight: 600;
+    }
+
+    /* 4. Triple-Dot Dropdown Menu */
+    .wa-dropdown {
+      position: absolute;
+      top: 48px;
+      right: 10px;
+      width: 224px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+      z-index: 120;
+      animation: popIn 0.14s ease-out;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .wa-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 10px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .wa-menu-item:hover, .wa-menu-item:active {
+      background: var(--bg-hover);
+    }
+
+    .wa-menu-item.danger {
+      color: var(--danger);
+    }
+
+    .wa-item-icon {
+      width: 18px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .wa-item-label {
+      flex: 1;
+    }
+
+    .wa-item-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: var(--bg-panel);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .wa-item-badge.on {
+      background: rgba(16, 185, 129, 0.18);
+      color: var(--mint-bright);
+      border-color: rgba(16, 185, 129, 0.45);
+    }
+
+    .wa-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 5px 6px;
+    }
+
+    /* 5. Find & Replace + Visual Delete Range Tool Strips */
+    .tool-strip-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 7px 10px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 22;
+    }
+
+    .tool-strip-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      width: 100%;
+    }
+
+    .compact-search-input {
+      flex: 1;
+      min-width: 0;
+      height: 30px;
+      padding: 0 9px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-code);
+      font-size: 12px;
+      outline: none;
+    }
+
+    .compact-search-input:focus {
+      border-color: var(--mint);
+    }
+
+    .match-counter {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      padding: 0 3px;
+    }
+
+    .strip-btn {
+      height: 30px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      font-size: 11.5px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .strip-btn:active {
+      transform: scale(0.95);
+    }
+
+    .strip-btn.toggle-all.active {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--mint);
+      color: var(--mint-bright);
+    }
+
+    .strip-btn.accent {
+      background: var(--mint);
+      color: var(--mint-dark);
+      border-color: var(--mint);
+      font-weight: 700;
+    }
+
+    .strip-btn.danger {
+      background: rgba(251, 113, 133, 0.16);
+      border-color: rgba(251, 113, 133, 0.5);
+      color: var(--danger);
+    }
+
+    /* 6. Workspace & Explorer Drawer */
+    .workspace {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 286px;
+      max-width: 84vw;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-102%);
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 60;
+      box-shadow: 10px 0 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    @media (min-width: 860px) {
+      .sidebar {
+        position: relative;
+        transform: translateX(0);
+        box-shadow: none;
+      }
+      .backdrop {
+        display: none !important;
+      }
+    }
+
+    .backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 8, 15, 0.62);
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 50;
+    }
+
+    .backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sidebar-single-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 8px;
+      border-bottom: 1px solid var(--border-soft);
+      background: var(--bg-panel);
+      flex-shrink: 0;
+    }
+
+    .exp-pill-btn {
+      flex: 1;
+      height: 28px;
+      padding: 0 5px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .exp-pill-btn.mint {
+      background: rgba(16, 185, 129, 0.16);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: var(--mint-bright);
+    }
+
+    .exp-pill-btn.danger {
+      color: var(--danger);
+      border-color: rgba(251, 113, 133, 0.32);
+    }
+
+    .exp-pill-btn:active {
+      transform: scale(0.95);
+    }
+
+    .workspace-slot-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #111521;
+      border-bottom: 1px solid var(--border-soft);
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .slot-nav-btn {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 22px;
+      height: 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slot-label {
+      font-weight: 700;
+      color: var(--mint-bright);
+    }
+
+    .slot-hint {
+      font-size: 10.5px;
+      color: var(--text-muted);
+    }
+
+    .multi-select-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(251, 113, 133, 0.12);
+      border-bottom: 1px solid rgba(251, 113, 133, 0.35);
+      flex-shrink: 0;
+    }
+
+    .multi-select-count {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #fecdd3;
+    }
+
+    .file-tree {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .file-tree.slot-slide-in {
+      animation: slotSlideIn 0.18s ease-out;
+    }
+
+    @keyframes slotSlideIn {
+      from { opacity: 0.35; transform: translateX(18px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .tree-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 35px;
+      padding: 5px 8px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      transition: background 0.12s ease;
+    }
+
+    .tree-row:hover {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+    }
+
+    .tree-row.active {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--mint-bright);
+      font-weight: 600;
+    }
+
+    .tree-row.swipe-deleting {
+      background: rgba(251, 113, 133, 0.25) !important;
+      color: #fecdd3 !important;
+    }
+
+    .tree-left {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .file-select-checkbox {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--mint);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .tree-caret {
+      font-size: 11px;
+      width: 12px;
+      color: var(--text-muted);
+    }
+
+    .tree-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .row-mini-btn.plus-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--mint-bright);
+      font-size: 15px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* 7. Code Editor + Synced Highlight Backdrop */
+    .editor-wrapper {
+      flex: 1;
+      display: flex;
+      min-width: 0;
+      min-height: 0;
+      background: var(--bg-deep);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .line-numbers {
+      width: 42px;
+      padding: 12px 6px 12px 0;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border-soft);
+      color: #54617a;
+      font-family: var(--font-code);
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: right;
+      white-space: pre;
+      overflow: hidden;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .editor-stage {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .highlight-backdrop,
+    .code-editor {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 12px 14px;
+      border: none;
+      font-family: var(--font-code);
+      font-size: 13px;
+      line-height: 1.55;
+      letter-spacing: 0;
+      tab-size: 2;
+      white-space: pre;
+      overflow: auto;
+      box-sizing: border-box;
+    }
+
+    .highlight-backdrop.word-wrap,
+    .code-editor.word-wrap {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-x: hidden;
+    }
+
+    .highlight-backdrop {
+      z-index: 1;
+      color: transparent;
+      background: var(--bg-deep);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .highlight-backdrop mark.hl-match {
+      background: rgba(52, 211, 153, 0.24);
+      color: transparent;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35);
+    }
+
+    .highlight-backdrop mark.hl-active {
+      background: rgba(251, 191, 36, 0.42);
+      color: transparent;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.85);
+    }
+
+    .highlight-backdrop mark.hl-range-start {
+      background: rgba(56, 189, 248, 0.38);
+      color: transparent;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1.5px rgba(56, 189, 248, 0.85);
+    }
+
+    .highlight-backdrop mark.hl-range-end {
+      background: rgba(251, 113, 133, 0.42);
+      color: transparent;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1.5px rgba(251, 113, 133, 0.9);
+    }
+
+    .highlight-backdrop mark.hl-range-span {
+      background: rgba(251, 113, 133, 0.22);
+      color: transparent;
+      border-radius: 2px;
+    }
+
+    .code-editor {
+      z-index: 2;
+      background: transparent;
+      color: var(--text-main);
+      caret-color: var(--mint-bright);
+      resize: none;
+      outline: none;
+    }
+
+    .image-preview-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 20px;
+      background: var(--bg-deep);
+      text-align: center;
+    }
+
+    .image-preview-box img {
+      max-width: 90%;
+      max-height: 60vh;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #090c12;
+    }
+
+    /* 8. Quick Symbol Bar (Default OFF) */
+    .symbol-bar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 8px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+
+    .symbol-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .sym-key {
+      min-width: 34px;
+      height: 32px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      font-family: var(--font-code);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .sym-key.tab-key {
+      color: var(--mint-bright);
+    }
+
+    /* 9. Long-Press Floating Context Menu */
+    .context-menu-card {
+      position: fixed;
+      min-width: 175px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 5px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.65);
+      z-index: 210;
+      animation: popIn 0.12s ease-out;
+    }
+
+    .ctx-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      padding: 9px 11px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .ctx-item:hover, .ctx-item:active {
+      background: var(--bg-hover);
+    }
+
+    .ctx-item.danger {
+      color: var(--danger);
+    }
+
+    /* 10. In-App Privacy Policy Modal */
+    .privacy-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 9, 17, 0.78);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 260;
+    }
+
+    .privacy-modal-card {
+      width: 100%;
+      max-width: 560px;
+      max-height: 86dvh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+      overflow: hidden;
+      animation: popIn 0.16s ease-out;
+    }
+
+    .privacy-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .privacy-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .privacy-modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--text-muted);
+    }
+
+    .privacy-modal-body h4 {
+      color: var(--mint-bright);
+      margin: 14px 0 4px;
+      font-size: 14px;
+    }
+
+    .privacy-modal-body h4:first-child {
+      margin-top: 0;
+    }
+
+    .privacy-modal-footer {
+      padding: 12px 16px;
+      background: var(--bg-elevated);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* 11. Live Runner Preview Modal & Console */
+    .preview-modal {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-deep);
+      display: flex;
+      flex-direction: column;
+      z-index: 180;
+    }
+
+    .preview-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 46px;
+      padding: 0 10px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .preview-left, .preview-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .badge {
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--mint-bright);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .preview-dropdown {
+      top: 48px;
+      right: 10px;
+      z-index: 195;
+    }
+
+    .preview-frame {
+      flex: 1;
+      width: 100%;
+      border: none;
+      background: #ffffff;
+    }
+
+    .console-panel {
+      height: 185px;
+      background: #0b0e16;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .console-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-soft);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .console-logs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .log-line { margin-bottom: 4px; word-break: break-word; }
+    .log-info { color: #cbd5e1; }
+    .log-warn { color: var(--warn); }
+    .log-error { color: var(--danger); }
+
+    /* 12. Fullscreen, Folder Sheet & Cozy Dialog */
+    body.app-fullscreen .brandbar,
+    body.app-fullscreen .topbar,
+    body.app-fullscreen .file-tabs-bar,
+    body.app-fullscreen .tool-strip-bar,
+    body.app-fullscreen .symbol-bar,
+    body.app-fullscreen .preview-topbar {
+      display: none !important;
+    }
+
+    .exit-fs-pill {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 300;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(20, 24, 36, 0.88);
+      backdrop-filter: blur(6px);
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .sheet-overlay, .cozy-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 15, 0.68);
+      backdrop-filter: blur(3px);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 240;
+    }
+
+    .cozy-overlay {
+      align-items: center;
+      padding: 18px;
+    }
+
+    .bottom-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 10px 16px 20px;
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+    }
+
+    .sheet-handle {
+      width: 38px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border);
+      margin: 0 auto 12px;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .sheet-folder-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--mint-bright);
+    }
+
+    .sheet-close-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .sheet-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sheet-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .sheet-opt-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      background: var(--bg-panel);
+    }
+
+    .sheet-opt-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sheet-opt-title {
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+
+    .sheet-opt-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .cozy-card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    }
+
+    .cozy-icon {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 10px;
+      border-radius: 14px;
+      background: rgba(16, 185, 129, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .cozy-icon.danger { background: rgba(251, 113, 133, 0.16); }
+    .cozy-icon.warn { background: rgba(251, 191, 36, 0.16); }
+
+    .cozy-title {
+      margin: 0 0 6px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .cozy-message {
+      margin: 0 0 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    .cozy-input {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-code);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .cozy-input:focus {
+      border-color: var(--mint);
+    }
+
+    .cozy-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .cozy-btn {
+      flex: 1;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .cozy-btn.cancel {
+      background: var(--bg-elevated);
+      color: var(--text-muted);
+    }
+
+    .cozy-btn.confirm {
+      background: var(--mint);
+      border-color: var(--mint);
+      color: var(--mint-dark);
+      font-weight: 700;
+    }
+
+    .cozy-btn.confirm.danger {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #2b060d;
+    }
+  </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Hello Pika Boy! 🚀</h1>
-    <p>Switch files from the top pills, or open Explorer to import a .zip project.</p>
-    <button id="clickBtn">Test JS Click</button>
+  <div id="appContainer" class="app-container">
+    <!-- Top Brand Bar -->
+    <header class="brandbar">
+      <div class="brand-left">
+        <svg class="brand-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="40" height="40" rx="10" fill="#1B2130" stroke="#2A3349" stroke-width="2"/>
+          <path d="M13 15L8.5 20L13 25" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M27 15L31.5 20L27 25" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.5 26V14H21.2C23.1 14 24.3 15.1 24.3 16.9C24.3 18.7 23.1 19.8 21.2 19.8H17.5" stroke="#F8FAFC" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="brand-name">PikaEdit</span>
+      </div>
+
+      <div class="brand-right">
+        <button id="undoBtn" class="mini-tool-btn" title="Undo" aria-label="Undo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v6h6"></path>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+          </svg>
+        </button>
+        <button id="redoBtn" class="mini-tool-btn" title="Redo" aria-label="Redo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+          </svg>
+        </button>
+        <button id="moreMenuBtn" class="dots-btn" title="More options" aria-label="More options" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="12" cy="19" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Second Bar: Hamburger left + Save (active file only) & Run right -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button id="menuBtn" class="icon-btn" title="Files & Folders" aria-label="Toggle Files">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="topbar-right">
+        <button id="saveFileBtn" class="action-btn secondary" title="Download Active File">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Save</span>
+        </button>
+
+        <button id="runBtn" class="action-btn primary" title="Run Project">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Run</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Scrollable File Tabs Strip -->
+    <div id="fileTabsBar" class="file-tabs-bar" aria-label="Open files"></div>
+
+    <!-- Triple-Dot Dropdown Menu -->
+    <div id="waDropdown" class="wa-dropdown hidden" role="menu">
+      <button id="menuFullscreenBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">⛶</span>
+        <span class="wa-item-label">Full Screen</span>
+      </button>
+      <button id="menuSymbolBarBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">⌨️</span>
+        <span class="wa-item-label">Quick Symbol Bar</span>
+        <span id="symbolBarState" class="wa-item-badge">OFF</span>
+      </button>
+      <button id="menuWordWrapBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">↩️</span>
+        <span class="wa-item-label">Word Wrap</span>
+        <span id="wordWrapState" class="wa-item-badge">OFF</span>
+      </button>
+      <button id="menuFindBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">🔍</span>
+        <span class="wa-item-label">Find &amp; Replace</span>
+      </button>
+      <button id="menuDeleteRangeBtn" class="wa-menu-item danger" role="menuitem">
+        <span class="wa-item-icon">✂️</span>
+        <span class="wa-item-label">Delete Range</span>
+      </button>
+      <button id="menuPrivacyBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">🛡️</span>
+        <span class="wa-item-label">Privacy Policy</span>
+      </button>
+
+      <div class="wa-divider"></div>
+      <button id="menuSaveZipBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">📦</span>
+        <span class="wa-item-label">Export Project ZIP</span>
+      </button>
+    </div>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="zipInput" accept=".zip,application/zip,application/x-zip-compressed,*/*" hidden />
+    <input type="file" id="assetUploadInput" multiple hidden />
+
+    <!-- Find & Replace Bar -->
+    <div id="findBar" class="tool-strip-bar hidden">
+      <div class="tool-strip-row">
+        <input type="text" id="findInput" class="compact-search-input" placeholder="Find word..." spellcheck="false" autocapitalize="off" autocomplete="off" />
+        <span id="findCount" class="match-counter">0/0</span>
+        <button id="findPrevBtn" class="strip-btn" title="Previous match">↑</button>
+        <button id="findNextBtn" class="strip-btn" title="Next match">↓</button>
+        <button id="replaceAllToggleBtn" class="strip-btn toggle-all" title="Toggle Replace All vs Single">All</button>
+        <button id="toggleReplaceRowBtn" class="strip-btn accent" title="Show/Hide Replace box">Replace</button>
+        <button id="closeFindBtn" class="strip-btn danger" title="Close">✕</button>
+      </div>
+      <div id="replaceRow" class="tool-strip-row hidden">
+        <input type="text" id="replaceInput" class="compact-search-input" placeholder="Replace with..." spellcheck="false" autocapitalize="off" autocomplete="off" />
+        <button id="executeReplaceBtn" class="strip-btn accent">Apply</button>
+      </div>
+    </div>
+
+    <!-- Visual Delete Range Bar -->
+    <div id="rangeBar" class="tool-strip-bar hidden">
+      <div class="tool-strip-row">
+        <input type="text" id="rangeStartInput" class="compact-search-input" placeholder="Start text..." spellcheck="false" autocapitalize="off" autocomplete="off" />
+        <span id="rangeStartCount" class="match-counter">0/0</span>
+        <button id="rangeStartPrevBtn" class="strip-btn" title="Previous start match">↑</button>
+        <button id="rangeStartNextBtn" class="strip-btn" title="Next start match">↓</button>
+        <button id="rangeNextStepBtn" class="strip-btn accent" title="Set End Text">Next</button>
+        <button id="closeRangeBtn" class="strip-btn danger" title="Close">✕</button>
+      </div>
+      <div id="rangeEndRow" class="tool-strip-row hidden">
+        <input type="text" id="rangeEndInput" class="compact-search-input" placeholder="End text..." spellcheck="false" autocapitalize="off" autocomplete="off" />
+        <span id="rangeEndCount" class="match-counter">0/0</span>
+        <button id="rangeEndPrevBtn" class="strip-btn" title="Previous end match">↑</button>
+        <button id="rangeEndNextBtn" class="strip-btn" title="Next end match">↓</button>
+        <button id="executeRangeDeleteBtn" class="strip-btn danger">Delete</button>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-single-actions">
+          <button id="newFileBtn" class="exp-pill-btn mint" title="New File">+ File</button>
+          <button id="newFolderBtn" class="exp-pill-btn" title="New Folder">+ Folder</button>
+          <button id="rootImportZipBtn" class="exp-pill-btn" title="Import ZIP">ZIP</button>
+          <button id="rootUploadBtn" class="exp-pill-btn" title="Upload Files">Files</button>
+          <button id="resetBtn" class="exp-pill-btn danger" title="Reset Section">Reset</button>
+        </div>
+
+        <div id="workspaceSlotBar" class="workspace-slot-bar">
+          <button id="prevSlotBtn" class="slot-nav-btn hidden" title="Previous Section">‹</button>
+          <span id="workspaceSlotLabel" class="slot-label">Section 1 / 1</span>
+          <span class="slot-hint">Swipe left → New</span>
+        </div>
+
+        <div id="multiSelectBar" class="multi-select-bar hidden">
+          <span id="multiSelectCount" class="multi-select-count">0 selected</span>
+          <div style="display:flex; gap:6px;">
+            <button id="deleteSelectedBtn" class="strip-btn danger">Delete</button>
+            <button id="cancelMultiSelectBtn" class="strip-btn">Done</button>
+          </div>
+        </div>
+
+        <div id="fileTree" class="file-tree"></div>
+      </aside>
+
+      <div id="sidebarBackdrop" class="backdrop"></div>
+
+      <main class="editor-wrapper">
+        <div id="lineNumbers" class="line-numbers">1</div>
+        <div id="editorStage" class="editor-stage">
+          <div id="highlightBackdrop" class="highlight-backdrop" aria-hidden="true"></div>
+          <textarea
+            id="codeEditor"
+            class="code-editor"
+            spellcheck="false"
+            autocapitalize="off"
+            autocomplete="off"
+            autocorrect="off"
+            placeholder="Write your code here..."
+          ></textarea>
+        </div>
+        <div id="assetPreviewBox" class="image-preview-box hidden">
+          <img id="assetImage" class="hidden" src="" alt="Asset Preview" />
+          <audio id="assetAudio" class="hidden" controls></audio>
+          <p id="assetInfo" style="color:var(--text-muted);font-size:13px;"></p>
+        </div>
+      </main>
+    </div>
+
+    <!-- Quick Symbol Bar (Default OFF) -->
+    <div id="symbolBar" class="symbol-bar hidden">
+      <button type="button" class="sym-key tab-key" data-insert="  ">Tab</button>
+      <button type="button" class="sym-key" data-insert="<">&lt;</button>
+      <button type="button" class="sym-key" data-insert=">">&gt;</button>
+      <button type="button" class="sym-key" data-insert="/">/</button>
+      <button type="button" class="sym-key" data-insert="{">{</button>
+      <button type="button" class="sym-key" data-insert="}">}</button>
+      <button type="button" class="sym-key" data-insert="(">(</button>
+      <button type="button" class="sym-key" data-insert=")">)</button>
+      <button type="button" class="sym-key" data-insert=";">;</button>
+      <button type="button" class="sym-key" data-insert="=">=</button>
+      <button type="button" class="sym-key" data-insert='"'>"</button>
+      <button type="button" class="sym-key" data-insert="'">'</button>
+      <button type="button" class="sym-key" data-insert=":">:</button>
+      <button type="button" class="sym-key" data-insert="#">#</button>
+      <button type="button" class="sym-key" data-insert=".">.</button>
+      <button type="button" class="sym-key" data-insert="[">[</button>
+      <button type="button" class="sym-key" data-insert="]">]</button>
+    </div>
   </div>
-  <script src="script.js"></script>
+
+  <!-- Long-Press Context Menu in File Area -->
+  <div id="fileAreaContextMenu" class="context-menu-card hidden" role="menu">
+    <button id="ctxSelectFilesBtn" class="ctx-item" role="menuitem">
+      <span>☑️</span>
+      <span>Select Files</span>
+    </button>
+    <button id="ctxDeleteSectionBtn" class="ctx-item danger" role="menuitem">
+      <span>🗑️</span>
+      <span>Delete Section</span>
+    </button>
+    <button id="ctxCancelBtn" class="ctx-item" role="menuitem">
+      <span>✕</span>
+      <span>Cancel</span>
+    </button>
+  </div>
+
+  <!-- In-App Privacy Policy Popup -->
+  <div id="privacyModalOverlay" class="privacy-overlay hidden" role="dialog" aria-modal="true">
+    <div class="privacy-modal-card">
+      <div class="privacy-modal-header">
+        <h3 class="privacy-modal-title"><span>🛡️</span><span>PikaEdit Privacy Policy</span></h3>
+        <button id="closePrivacyTopBtn" class="sheet-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="privacy-modal-body">
+        <h4>1. 100% Local &amp; Offline-First Storage</h4>
+        <p>PikaEdit stores all your HTML, CSS, JavaScript, ZIP archives, images, and audio assets strictly on your device using your browser's local IndexedDB storage. Your code and project files are never uploaded to any external server.</p>
+
+        <h4>2. Zero Tracking &amp; No Account Required</h4>
+        <p>No sign-ups, logins, or personal details are required. PikaEdit does not collect analytics, keystrokes, or personal identifiers.</p>
+
+        <h4>3. Virtual File System (VFS) &amp; Live Runner</h4>
+        <p>When you tap Run or Open in Device Browser, PikaEdit compiles your project locally inside your browser using in-memory Data URLs and Blob URLs.</p>
+
+        <h4>4. Complete User Control</h4>
+        <p>You can download individual files, export a section as a `.zip` file anytime, or remove files, folders, and sections using swipe gestures, multi-select, or Reset.</p>
+      </div>
+      <div class="privacy-modal-footer">
+        <button id="closePrivacyBottomBtn" class="action-btn primary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Runner & Console Modal -->
+  <div id="previewModal" class="preview-modal hidden">
+    <div class="preview-topbar">
+      <div class="preview-left">
+        <button id="closePreviewBtn" class="icon-btn" title="Back to Editor">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
+        <span id="previewTitle" class="preview-title">Live Output</span>
+      </div>
+      <div class="preview-right">
+        <button id="consoleToggleBtn" class="action-btn secondary">
+          Console <span id="consoleBadge" class="badge">0</span>
+        </button>
+        <button id="previewMoreBtn" class="dots-btn" title="Preview options" aria-label="Preview options" aria-expanded="false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="12" cy="19" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="previewDropdown" class="wa-dropdown preview-dropdown hidden" role="menu">
+      <button id="openBrowserBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">🌐</span>
+        <span class="wa-item-label">Open in Device Browser</span>
+      </button>
+      <button id="reloadPreviewBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">🔄</span>
+        <span class="wa-item-label">Reload Output</span>
+      </button>
+      <button id="previewFullscreenBtn" class="wa-menu-item" role="menuitem">
+        <span class="wa-item-icon">⛶</span>
+        <span class="wa-item-label">Full Screen</span>
+      </button>
+    </div>
+
+    <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
+
+    <div id="consolePanel" class="console-panel hidden">
+      <div class="console-header">
+        <span>CONSOLE LOGS</span>
+        <button id="clearConsoleBtn" class="strip-btn">Clear</button>
+      </div>
+      <div id="consoleLogs" class="console-logs"></div>
+    </div>
+  </div>
+
+  <!-- Exit Fullscreen Pill -->
+  <button id="exitFullscreenBtn" class="exit-fs-pill hidden" title="Exit Full Screen">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+      <polyline points="4 14 10 14 10 20"></polyline>
+      <polyline points="20 10 14 10 14 4"></polyline>
+      <line x1="14" y1="10" x2="21" y2="3"></line>
+      <line x1="3" y1="21" x2="10" y2="14"></line>
+    </svg>
+    <span>Exit</span>
+  </button>
+
+  <!-- Folder '+' Bottom Action Sheet -->
+  <div id="folderSheetOverlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-folder-badge">
+          <span>📂</span>
+          <span id="sheetFolderTitle">Folder</span>
+        </div>
+        <button id="closeSheetBtn" class="sheet-close-btn" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="sheet-options">
+        <button id="sheetNewFileBtn" class="sheet-option">
+          <span class="sheet-opt-icon">📄</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">New File</span>
+            <span class="sheet-opt-sub">Create HTML, CSS, or JS file inside</span>
+          </div>
+        </button>
+
+        <button id="sheetNewFolderBtn" class="sheet-option">
+          <span class="sheet-opt-icon">📁</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">New Subfolder</span>
+            <span class="sheet-opt-sub">Create a nested folder</span>
+          </div>
+        </button>
+
+        <button id="sheetImportZipBtn" class="sheet-option">
+          <span class="sheet-opt-icon">📦</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Import ZIP Here</span>
+            <span class="sheet-opt-sub">Extract a .zip project into this folder</span>
+          </div>
+        </button>
+
+        <button id="sheetUploadFilesBtn" class="sheet-option">
+          <span class="sheet-opt-icon">📎</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Upload Files</span>
+            <span class="sheet-opt-sub">Add images, audio, or code files</span>
+          </div>
+        </button>
+
+        <button id="sheetExportZipBtn" class="sheet-option">
+          <span class="sheet-opt-icon">⬇️</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Export Folder as ZIP</span>
+            <span class="sheet-opt-sub">Download only this folder as .zip</span>
+          </div>
+        </button>
+
+        <button id="sheetRenameFolderBtn" class="sheet-option">
+          <span class="sheet-opt-icon">✏️</span>
+          <div class="sheet-opt-text">
+            <span class="sheet-opt-title">Rename Folder</span>
+            <span class="sheet-opt-sub">Change folder name</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cozy Compact Popup Modal -->
+  <div id="cozyModalOverlay" class="cozy-overlay hidden" role="dialog" aria-modal="true">
+    <div class="cozy-card">
+      <div id="cozyIcon" class="cozy-icon">✨</div>
+      <h3 id="cozyTitle" class="cozy-title">Notice</h3>
+      <p id="cozyMessage" class="cozy-message"></p>
+      <input
+        type="text"
+        id="cozyInput"
+        class="cozy-input hidden"
+        placeholder="e.g. index.html, style.css, script.js"
+        spellcheck="false"
+        autocapitalize="off"
+        autocomplete="off"
+      />
+      <div class="cozy-actions">
+        <button id="cozyCancelBtn" class="cozy-btn cancel">Cancel</button>
+        <button id="cozyConfirmBtn" class="cozy-btn confirm">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_FILES = {
+      "index.html": `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PikaEdit Live Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="arena">
+    <span class="tag">PikaEdit Live Preview</span>
+    <h1>Bid &amp; Build Arena</h1>
+    <p>Edit <code>style.css</code> or <code>script.js</code>, then tap <strong>Run</strong> to see live changes.</p>
+    <div class="stats">
+      <div class="box"><strong id="scoreVal">100</strong><span>Score</span></div>
+      <div class="box"><strong id="boostVal">1x</strong><span>Boost</span></div>
+    </div>
+    <button id="boostBtn">Trigger Boost</button>
+  </div>
+  <script src="script.js"><\/script>
 </body>
 </html>`,
-  "style.css": `body {
-  font-family: system-ui, sans-serif;
-  background: #10141e;
-  color: #f8fafc;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
+      "style.css": `* {
+  box-sizing: border-box;
   margin: 0;
+  padding: 0;
 }
 
-.card {
-  background: #1b2130;
-  padding: 28px;
-  border-radius: 16px;
+body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at top, #182238, #0b0f19 72%);
+  color: #f8fafc;
+}
+
+.arena {
+  width: 100%;
+  max-width: 380px;
+  background: #141b2d;
+  border: 1px solid #293552;
+  border-radius: 18px;
+  padding: 24px;
   text-align: center;
-  border: 1px solid #313b54;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+p {
+  font-size: 13.5px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+code {
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.box {
+  background: #0e1320;
+  border: 1px solid #232d45;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.box strong {
+  display: block;
+  font-size: 20px;
+  color: #34d399;
+}
+
+.box span {
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 button {
-  margin-top: 14px;
-  padding: 10px 20px;
+  width: 100%;
+  height: 40px;
   border: none;
-  border-radius: 10px;
+  border-radius: 11px;
   background: #10b981;
   color: #042419;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }`,
-  "script.js": `document.getElementById("clickBtn").addEventListener("click", () => {
-  console.log("Button clicked successfully!");
-  alert("JS is working cleanly!");
+      "script.js": `let score = 100;
+let level = 1;
+
+const scoreEl = document.getElementById("scoreVal");
+const boostEl = document.getElementById("boostVal");
+const btn = document.getElementById("boostBtn");
+
+btn.addEventListener("click", () => {
+  level += 1;
+  score += level * 25;
+  scoreEl.textContent = String(score);
+  boostEl.textContent = level + "x";
+  console.log("Boost active:", level + "x", "Score:", score);
 });`
-};
+    };
 
-const STORAGE_KEY = "pikaedit_project_files_v2";
-const FOLDERS_KEY = "pikaedit_folders_v2";
-const ACTIVE_KEY = "pikaedit_active_file_v2";
+    const STORAGE_KEY = "pikaedit_project_files_v2";
+    const FOLDERS_KEY = "pikaedit_folders_v2";
+    const ACTIVE_KEY = "pikaedit_active_file_v2";
 
-// =========================================================================
-// 1. UNLIMITED INDEXEDDB STORAGE (Multi-Workspace Support)
-// =========================================================================
-const DB_NAME = "PikaEditWorkspaceDB";
-const DB_STORE = "workspace";
-let dbInstance = null;
+    // IndexedDB Storage
+    const DB_NAME = "PikaEditWorkspaceDB";
+    const DB_STORE = "workspace";
+    let dbInstance = null;
 
-function openWorkspaceDB() {
-  return new Promise((resolve) => {
-    if (!window.indexedDB) return resolve(null);
-    if (dbInstance) return resolve(dbInstance);
-    try {
-      const req = window.indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(DB_STORE)) {
-          db.createObjectStore(DB_STORE);
+    function openWorkspaceDB() {
+      return new Promise((resolve) => {
+        if (!window.indexedDB) return resolve(null);
+        if (dbInstance) return resolve(dbInstance);
+        try {
+          const req = window.indexedDB.open(DB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(DB_STORE)) {
+              db.createObjectStore(DB_STORE);
+            }
+          };
+          req.onsuccess = (e) => {
+            dbInstance = e.target.result;
+            resolve(dbInstance);
+          };
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
         }
-      };
-      req.onsuccess = (e) => {
-        dbInstance = e.target.result;
-        resolve(dbInstance);
-      };
-      req.onerror = () => resolve(null);
-    } catch (e) {
-      resolve(null);
+      });
     }
-  });
-}
 
-async function idbGet(key) {
-  const db = await openWorkspaceDB();
-  if (!db) return null;
-  return new Promise((resolve) => {
-    try {
-      const tx = db.transaction(DB_STORE, "readonly");
-      const req = tx.objectStore(DB_STORE).get(key);
-      req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
-      req.onerror = () => resolve(null);
-    } catch (e) {
-      resolve(null);
-    }
-  });
-}
-
-async function idbSet(key, val) {
-  const db = await openWorkspaceDB();
-  if (!db) return false;
-  return new Promise((resolve) => {
-    try {
-      const tx = db.transaction(DB_STORE, "readwrite");
-      tx.objectStore(DB_STORE).put(val, key);
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => resolve(false);
-    } catch (e) {
-      resolve(false);
-    }
-  });
-}
-
-function loadLegacyLocalStorage() {
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && Object.keys(parsed).length > 0) return parsed;
-    }
-  } catch (e) {}
-  return null;
-}
-
-function createNewSlotObject(initialFiles = null) {
-  const slotFiles = initialFiles || {
-    "index.html": "",
-    "style.css": "",
-    "script.js": ""
-  };
-  return {
-    files: slotFiles,
-    emptyFolders: [],
-    expandedFolders: [],
-    activeFile: Object.keys(slotFiles)[0] || "index.html"
-  };
-}
-
-let workspaces = [createNewSlotObject(loadLegacyLocalStorage() || { ...DEFAULT_FILES })];
-let currentSlotIndex = 0;
-
-let files = workspaces[0].files;
-let emptyFolders = [];
-let expandedFolders = new Set();
-let activeFile = workspaces[0].activeFile;
-
-let activeBlobUrls = [];
-let browserTabBlobUrls = [];
-let currentPreviewHtmlFile = null;
-let logCount = 0;
-
-let sheetTargetFolder = "";
-let pendingUploadFolder = "";
-
-function syncCurrentSlotState() {
-  if (!workspaces[currentSlotIndex]) {
-    workspaces[currentSlotIndex] = createNewSlotObject();
-  }
-  workspaces[currentSlotIndex].files = files;
-  workspaces[currentSlotIndex].emptyFolders = emptyFolders;
-  workspaces[currentSlotIndex].expandedFolders = Array.from(expandedFolders);
-  workspaces[currentSlotIndex].activeFile = activeFile;
-}
-
-function updateSlotBarUI() {
-  if (!workspaceSlotLabel) return;
-  workspaceSlotLabel.textContent = `Section ${currentSlotIndex + 1} / ${workspaces.length}`;
-  if (prevSlotBtn) {
-    prevSlotBtn.classList.toggle("hidden", currentSlotIndex === 0);
-  }
-}
-
-async function switchWorkspaceSlot(targetIndex, createIfMissing = false) {
-  syncCurrentSlotState();
-
-  if (targetIndex < 0) return;
-  if (targetIndex >= workspaces.length) {
-    if (!createIfMissing) return;
-    workspaces.push(createNewSlotObject());
-  }
-
-  currentSlotIndex = targetIndex;
-  const slot = workspaces[currentSlotIndex];
-  files = slot.files;
-  emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
-  expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
-
-  if (slot.activeFile && slot.activeFile in files) {
-    activeFile = slot.activeFile;
-  } else {
-    activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
-  }
-
-  updateSlotBarUI();
-  fileTreeEl.classList.remove("slot-slide-in");
-  void fileTreeEl.offsetWidth;
-  fileTreeEl.classList.add("slot-slide-in");
-
-  openFile(activeFile, { syncTree: true, persist: false });
-  await persistNow();
-}
-
-let saveTimer = null;
-function saveWorkspace() {
-  if (saveStatusLabel) saveStatusLabel.textContent = "Saving...";
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(persistNow, 120);
-}
-
-async function persistNow() {
-  syncCurrentSlotState();
-  await idbSet("workspaces_v1", workspaces);
-  await idbSet("currentSlotIndex_v1", currentSlotIndex);
-  await idbSet("files", files);
-  await idbSet("folders", emptyFolders);
-  await idbSet("activeFile", activeFile);
-
-  try {
-    let approxSize = 0;
-    for (const val of Object.values(files)) {
-      approxSize += typeof val === "string" ? val.length : 0;
-      if (approxSize > 1500000) break;
-    }
-    if (approxSize <= 1500000) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
-      window.localStorage.setItem(FOLDERS_KEY, JSON.stringify(emptyFolders));
-      window.localStorage.setItem(ACTIVE_KEY, activeFile);
-    }
-  } catch (e) {}
-
-  if (saveStatusLabel) saveStatusLabel.textContent = "Saved ✓";
-}
-
-// =========================================================================
-// 2. DISABLE MOBILE PULL-TO-REFRESH & HANDLE KEYBOARD VIEWPORT
-// =========================================================================
-(function preventPullToRefresh() {
-  let touchStartY = 0;
-  document.addEventListener(
-    "touchstart",
-    (e) => {
-      if (e.touches.length === 1) {
-        touchStartY = e.touches[0].clientY;
-      }
-    },
-    { passive: true }
-  );
-
-  document.addEventListener(
-    "touchmove",
-    (e) => {
-      if (e.touches.length !== 1) return;
-      const currentY = e.touches[0].clientY;
-      const isPullingDown = currentY > touchStartY;
-      if (!isPullingDown) return;
-
-      let el = e.target;
-      while (el && el !== document.body && el !== document.documentElement) {
-        if (el.scrollHeight > el.clientHeight && el.scrollTop > 0) {
-          return;
+    async function idbGet(key) {
+      const db = await openWorkspaceDB();
+      if (!db) return null;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(DB_STORE, "readonly");
+          const req = tx.objectStore(DB_STORE).get(key);
+          req.onsuccess = () => resolve(req.result !== undefined ? req.result : null);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
         }
-        el = el.parentElement;
-      }
-
-      if (e.cancelable) {
-        e.preventDefault();
-      }
-    },
-    { passive: false }
-  );
-})();
-
-if (window.visualViewport) {
-  const syncViewportHeight = () => {
-    const appEl = document.getElementById("appContainer");
-    if (appEl) {
-      appEl.style.height = `${window.visualViewport.height}px`;
+      });
     }
-  };
-  window.visualViewport.addEventListener("resize", syncViewportHeight);
-}
 
-// =========================================================================
-// DOM ELEMENTS
-// =========================================================================
-const undoBtn = document.getElementById("undoBtn");
-const redoBtn = document.getElementById("redoBtn");
-const moreMenuBtn = document.getElementById("moreMenuBtn");
-const waDropdown = document.getElementById("waDropdown");
-const menuFullscreenBtn = document.getElementById("menuFullscreenBtn");
-const menuSymbolBarBtn = document.getElementById("menuSymbolBarBtn");
-const symbolBarState = document.getElementById("symbolBarState");
-const menuWordWrapBtn = document.getElementById("menuWordWrapBtn");
-const wordWrapState = document.getElementById("wordWrapState");
-const menuFindBtn = document.getElementById("menuFindBtn");
-const menuDeleteRangeBtn = document.getElementById("menuDeleteRangeBtn");
-const menuCopyAllBtn = document.getElementById("menuCopyAllBtn");
-const menuImportZipBtn = document.getElementById("menuImportZipBtn");
-const menuSaveZipBtn = document.getElementById("menuSaveZipBtn");
-const menuResetBtn = document.getElementById("menuResetBtn");
-const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
-const previewFullscreenBtn = document.getElementById("previewFullscreenBtn");
-
-const previewMoreBtn = document.getElementById("previewMoreBtn");
-const previewDropdown = document.getElementById("previewDropdown");
-const openBrowserBtn = document.getElementById("openBrowserBtn");
-
-const fileTabsBar = document.getElementById("fileTabsBar");
-const cursorPosLabel = document.getElementById("cursorPosLabel");
-const saveStatusLabel = document.getElementById("saveStatusLabel");
-
-const findBar = document.getElementById("findBar");
-const findInput = document.getElementById("findInput");
-const findCount = document.getElementById("findCount");
-const findPrevBtn = document.getElementById("findPrevBtn");
-const findNextBtn = document.getElementById("findNextBtn");
-const closeFindBtn = document.getElementById("closeFindBtn");
-const symbolBar = document.getElementById("symbolBar");
-
-const sidebar = document.getElementById("sidebar");
-const sidebarBackdrop = document.getElementById("sidebarBackdrop");
-const menuBtn = document.getElementById("menuBtn");
-const fileTreeEl = document.getElementById("fileTree");
-const workspaceSlotLabel = document.getElementById("workspaceSlotLabel");
-const prevSlotBtn = document.getElementById("prevSlotBtn");
-const currentFileNameEl = document.getElementById("currentFileName");
-const codeEditor = document.getElementById("codeEditor");
-const lineNumbers = document.getElementById("lineNumbers");
-const assetPreviewBox = document.getElementById("assetPreviewBox");
-const assetImage = document.getElementById("assetImage");
-const assetAudio = document.getElementById("assetAudio");
-const assetInfo = document.getElementById("assetInfo");
-
-const zipInput = document.getElementById("zipInput");
-const assetUploadInput = document.getElementById("assetUploadInput");
-const exportZipBtn = document.getElementById("exportZipBtn");
-const newFileBtn = document.getElementById("newFileBtn");
-const newFolderBtn = document.getElementById("newFolderBtn");
-const resetBtn = document.getElementById("resetBtn");
-const rootImportZipBtn = document.getElementById("rootImportZipBtn");
-const rootUploadBtn = document.getElementById("rootUploadBtn");
-const runBtn = document.getElementById("runBtn");
-
-const previewModal = document.getElementById("previewModal");
-const closePreviewBtn = document.getElementById("closePreviewBtn");
-const reloadPreviewBtn = document.getElementById("reloadPreviewBtn");
-const previewTitle = document.getElementById("previewTitle");
-const previewFrame = document.getElementById("previewFrame");
-
-const consoleToggleBtn = document.getElementById("consoleToggleBtn");
-const consolePanel = document.getElementById("consolePanel");
-const consoleLogs = document.getElementById("consoleLogs");
-const consoleBadge = document.getElementById("consoleBadge");
-const clearConsoleBtn = document.getElementById("clearConsoleBtn");
-
-// Folder '+' Bottom Sheet Elements
-const folderSheetOverlay = document.getElementById("folderSheetOverlay");
-const sheetFolderTitle = document.getElementById("sheetFolderTitle");
-const closeSheetBtn = document.getElementById("closeSheetBtn");
-const sheetNewFileBtn = document.getElementById("sheetNewFileBtn");
-const sheetNewFolderBtn = document.getElementById("sheetNewFolderBtn");
-const sheetImportZipBtn = document.getElementById("sheetImportZipBtn");
-const sheetUploadFilesBtn = document.getElementById("sheetUploadFilesBtn");
-const sheetExportZipBtn = document.getElementById("sheetExportZipBtn");
-const sheetRenameFolderBtn = document.getElementById("sheetRenameFolderBtn");
-
-if (prevSlotBtn) {
-  prevSlotBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (currentSlotIndex > 0) {
-      switchWorkspaceSlot(currentSlotIndex - 1, false);
+    async function idbSet(key, val) {
+      const db = await openWorkspaceDB();
+      if (!db) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(DB_STORE, "readwrite");
+          tx.objectStore(DB_STORE).put(val, key);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
     }
-  });
-}
 
-// =========================================================================
-// 3. UNDO / REDO HISTORY STACK PER FILE
-// =========================================================================
-const undoStack = {};
-const redoStack = {};
-let lastSnapshotTimer = null;
+    function createNewSlotObject(initialFiles = null) {
+      const slotFiles = initialFiles || {
+        "index.html": "",
+        "style.css": "",
+        "script.js": ""
+      };
+      return {
+        files: slotFiles,
+        emptyFolders: [],
+        expandedFolders: [],
+        activeFile: Object.keys(slotFiles)[0] || "index.html"
+      };
+    }
 
-function getUndoKey(filePath) {
-  return `${currentSlotIndex}::${filePath}`;
-}
+    let workspaces = [createNewSlotObject({ ...DEFAULT_FILES })];
+    let currentSlotIndex = 0;
 
-function recordUndoSnapshot(filePath, value) {
-  const key = getUndoKey(filePath);
-  if (!undoStack[key]) undoStack[key] = [];
-  const stack = undoStack[key];
-  if (stack.length === 0 || stack[stack.length - 1] !== value) {
-    stack.push(value);
-    if (stack.length > 60) stack.shift();
-  }
-}
+    let files = workspaces[0].files;
+    let emptyFolders = [];
+    let expandedFolders = new Set();
+    let activeFile = workspaces[0].activeFile;
 
-undoBtn.addEventListener("click", () => {
-  if (codeEditor.classList.contains("hidden")) return;
-  const key = getUndoKey(activeFile);
-  const stack = undoStack[key] || [];
-  if (stack.length <= 1) return;
+    let activeBlobUrls = [];
+    let browserTabBlobUrls = [];
+    let currentPreviewHtmlFile = null;
+    let logCount = 0;
 
-  if (!redoStack[key]) redoStack[key] = [];
-  const current = stack.pop();
-  redoStack[key].push(current);
+    let sheetTargetFolder = "";
+    let pendingUploadFolder = "";
 
-  const prev = stack[stack.length - 1];
-  codeEditor.value = prev;
-  files[activeFile] = prev;
-  saveWorkspace();
-  updateLineNumbers(true);
-  updateCursorStatus();
-});
+    let isMultiSelectMode = false;
+    let selectedPaths = new Set();
 
-redoBtn.addEventListener("click", () => {
-  if (codeEditor.classList.contains("hidden")) return;
-  const key = getUndoKey(activeFile);
-  const rStack = redoStack[key] || [];
-  if (rStack.length === 0) return;
+    // DOM References
+    const undoBtn = document.getElementById("undoBtn");
+    const redoBtn = document.getElementById("redoBtn");
+    const moreMenuBtn = document.getElementById("moreMenuBtn");
+    const waDropdown = document.getElementById("waDropdown");
+    const menuFullscreenBtn = document.getElementById("menuFullscreenBtn");
+    const menuSymbolBarBtn = document.getElementById("menuSymbolBarBtn");
+    const symbolBarState = document.getElementById("symbolBarState");
+    const menuWordWrapBtn = document.getElementById("menuWordWrapBtn");
+    const wordWrapState = document.getElementById("wordWrapState");
+    const menuFindBtn = document.getElementById("menuFindBtn");
+    const menuDeleteRangeBtn = document.getElementById("menuDeleteRangeBtn");
+    const menuPrivacyBtn = document.getElementById("menuPrivacyBtn");
+    const menuSaveZipBtn = document.getElementById("menuSaveZipBtn");
+    const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
+    const previewFullscreenBtn = document.getElementById("previewFullscreenBtn");
 
-  const next = rStack.pop();
-  if (!undoStack[key]) undoStack[key] = [];
-  undoStack[key].push(next);
+    const previewMoreBtn = document.getElementById("previewMoreBtn");
+    const previewDropdown = document.getElementById("previewDropdown");
+    const openBrowserBtn = document.getElementById("openBrowserBtn");
 
-  codeEditor.value = next;
-  files[activeFile] = next;
-  saveWorkspace();
-  updateLineNumbers(true);
-  updateCursorStatus();
-});
+    const fileTabsBar = document.getElementById("fileTabsBar");
+    const symbolBar = document.getElementById("symbolBar");
 
-// =========================================================================
-// 4. WHATSAPP-STYLE TRIPLE-DOT MENUS & FULL SCREEN MODE
-// =========================================================================
-function toggleWaDropdown(forceState) {
-  const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
-  waDropdown.classList.toggle("hidden", !show);
-  moreMenuBtn.setAttribute("aria-expanded", String(show));
-}
+    // Find & Replace DOM
+    const findBar = document.getElementById("findBar");
+    const findInput = document.getElementById("findInput");
+    const findCount = document.getElementById("findCount");
+    const findPrevBtn = document.getElementById("findPrevBtn");
+    const findNextBtn = document.getElementById("findNextBtn");
+    const replaceAllToggleBtn = document.getElementById("replaceAllToggleBtn");
+    const toggleReplaceRowBtn = document.getElementById("toggleReplaceRowBtn");
+    const closeFindBtn = document.getElementById("closeFindBtn");
+    const replaceRow = document.getElementById("replaceRow");
+    const replaceInput = document.getElementById("replaceInput");
+    const executeReplaceBtn = document.getElementById("executeReplaceBtn");
 
-function togglePreviewDropdown(forceState) {
-  if (!previewDropdown || !previewMoreBtn) return;
-  const show = typeof forceState === "boolean" ? forceState : previewDropdown.classList.contains("hidden");
-  previewDropdown.classList.toggle("hidden", !show);
-  previewMoreBtn.setAttribute("aria-expanded", String(show));
-}
+    // Visual Delete Range DOM
+    const rangeBar = document.getElementById("rangeBar");
+    const rangeStartInput = document.getElementById("rangeStartInput");
+    const rangeStartCount = document.getElementById("rangeStartCount");
+    const rangeStartPrevBtn = document.getElementById("rangeStartPrevBtn");
+    const rangeStartNextBtn = document.getElementById("rangeStartNextBtn");
+    const rangeNextStepBtn = document.getElementById("rangeNextStepBtn");
+    const closeRangeBtn = document.getElementById("closeRangeBtn");
+    const rangeEndRow = document.getElementById("rangeEndRow");
+    const rangeEndInput = document.getElementById("rangeEndInput");
+    const rangeEndCount = document.getElementById("rangeEndCount");
+    const rangeEndPrevBtn = document.getElementById("rangeEndPrevBtn");
+    const rangeEndNextBtn = document.getElementById("rangeEndNextBtn");
+    const executeRangeDeleteBtn = document.getElementById("executeRangeDeleteBtn");
 
-moreMenuBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  toggleWaDropdown();
-});
+    // Explorer & Editor DOM
+    const sidebar = document.getElementById("sidebar");
+    const sidebarBackdrop = document.getElementById("sidebarBackdrop");
+    const menuBtn = document.getElementById("menuBtn");
+    const fileTreeEl = document.getElementById("fileTree");
+    const workspaceSlotLabel = document.getElementById("workspaceSlotLabel");
+    const prevSlotBtn = document.getElementById("prevSlotBtn");
+    const multiSelectBar = document.getElementById("multiSelectBar");
+    const multiSelectCount = document.getElementById("multiSelectCount");
+    const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+    const cancelMultiSelectBtn = document.getElementById("cancelMultiSelectBtn");
 
-previewMoreBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  togglePreviewDropdown();
-});
+    const codeEditor = document.getElementById("codeEditor");
+    const highlightBackdrop = document.getElementById("highlightBackdrop");
+    const lineNumbers = document.getElementById("lineNumbers");
+    const assetPreviewBox = document.getElementById("assetPreviewBox");
+    const assetImage = document.getElementById("assetImage");
+    const assetAudio = document.getElementById("assetAudio");
+    const assetInfo = document.getElementById("assetInfo");
 
-document.addEventListener("click", (e) => {
-  if (!waDropdown.classList.contains("hidden") && !waDropdown.contains(e.target) && !moreMenuBtn.contains(e.target)) {
-    toggleWaDropdown(false);
-  }
-  if (
-    previewDropdown &&
-    !previewDropdown.classList.contains("hidden") &&
-    !previewDropdown.contains(e.target) &&
-    !previewMoreBtn.contains(e.target)
-  ) {
-    togglePreviewDropdown(false);
-  }
-});
+    const zipInput = document.getElementById("zipInput");
+    const assetUploadInput = document.getElementById("assetUploadInput");
+    const saveFileBtn = document.getElementById("saveFileBtn");
+    const newFileBtn = document.getElementById("newFileBtn");
+    const newFolderBtn = document.getElementById("newFolderBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const rootImportZipBtn = document.getElementById("rootImportZipBtn");
+    const rootUploadBtn = document.getElementById("rootUploadBtn");
+    const runBtn = document.getElementById("runBtn");
 
-function enterAppFullscreen() {
-  toggleWaDropdown(false);
-  togglePreviewDropdown(false);
-  closeMobileSidebar();
-  document.body.classList.add("app-fullscreen");
-  exitFullscreenBtn.classList.remove("hidden");
+    const fileAreaContextMenu = document.getElementById("fileAreaContextMenu");
+    const ctxSelectFilesBtn = document.getElementById("ctxSelectFilesBtn");
+    const ctxDeleteSectionBtn = document.getElementById("ctxDeleteSectionBtn");
+    const ctxCancelBtn = document.getElementById("ctxCancelBtn");
 
-  const docEl = document.documentElement;
-  const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
-  if (reqFs) {
-    try {
-      const p = reqFs.call(docEl);
-      if (p && typeof p.catch === "function") p.catch(() => {});
-    } catch (e) {}
-  }
-}
+    const privacyModalOverlay = document.getElementById("privacyModalOverlay");
+    const closePrivacyTopBtn = document.getElementById("closePrivacyTopBtn");
+    const closePrivacyBottomBtn = document.getElementById("closePrivacyBottomBtn");
 
-function exitAppFullscreen() {
-  document.body.classList.remove("app-fullscreen");
-  exitFullscreenBtn.classList.add("hidden");
+    const previewModal = document.getElementById("previewModal");
+    const closePreviewBtn = document.getElementById("closePreviewBtn");
+    const reloadPreviewBtn = document.getElementById("reloadPreviewBtn");
+    const previewTitle = document.getElementById("previewTitle");
+    const previewFrame = document.getElementById("previewFrame");
+    const consoleToggleBtn = document.getElementById("consoleToggleBtn");
+    const consolePanel = document.getElementById("consolePanel");
+    const consoleLogs = document.getElementById("consoleLogs");
+    const consoleBadge = document.getElementById("consoleBadge");
+    const clearConsoleBtn = document.getElementById("clearConsoleBtn");
 
-  const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
-  if (fsEl) {
-    const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-    if (exitFs) {
+    const folderSheetOverlay = document.getElementById("folderSheetOverlay");
+    const sheetFolderTitle = document.getElementById("sheetFolderTitle");
+    const closeSheetBtn = document.getElementById("closeSheetBtn");
+    const sheetNewFileBtn = document.getElementById("sheetNewFileBtn");
+    const sheetNewFolderBtn = document.getElementById("sheetNewFolderBtn");
+    const sheetImportZipBtn = document.getElementById("sheetImportZipBtn");
+    const sheetUploadFilesBtn = document.getElementById("sheetUploadFilesBtn");
+    const sheetExportZipBtn = document.getElementById("sheetExportZipBtn");
+    const sheetRenameFolderBtn = document.getElementById("sheetRenameFolderBtn");
+
+    const cozyModalOverlay = document.getElementById("cozyModalOverlay");
+    const cozyIcon = document.getElementById("cozyIcon");
+    const cozyTitle = document.getElementById("cozyTitle");
+    const cozyMessage = document.getElementById("cozyMessage");
+    const cozyInput = document.getElementById("cozyInput");
+    const cozyCancelBtn = document.getElementById("cozyCancelBtn");
+    const cozyConfirmBtn = document.getElementById("cozyConfirmBtn");
+
+    // Persistence & Multi-Section Management
+    function syncCurrentSlotState() {
+      if (!workspaces[currentSlotIndex]) {
+        workspaces[currentSlotIndex] = createNewSlotObject();
+      }
+      workspaces[currentSlotIndex].files = files;
+      workspaces[currentSlotIndex].emptyFolders = emptyFolders;
+      workspaces[currentSlotIndex].expandedFolders = Array.from(expandedFolders);
+      workspaces[currentSlotIndex].activeFile = activeFile;
+    }
+
+    function updateSlotBarUI() {
+      workspaceSlotLabel.textContent = `Section ${currentSlotIndex + 1} / ${workspaces.length}`;
+      prevSlotBtn.classList.toggle("hidden", currentSlotIndex === 0);
+    }
+
+    let saveTimer = null;
+    function saveWorkspace() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(persistNow, 120);
+    }
+
+    async function persistNow() {
+      syncCurrentSlotState();
+      await idbSet("workspaces_v2", workspaces);
+      await idbSet("currentSlotIndex_v2", currentSlotIndex);
       try {
-        const p = exitFs.call(document);
-        if (p && typeof p.catch === "function") p.catch(() => {});
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
+        window.localStorage.setItem(FOLDERS_KEY, JSON.stringify(emptyFolders));
+        window.localStorage.setItem(ACTIVE_KEY, activeFile);
       } catch (e) {}
     }
-  }
-}
 
-menuFullscreenBtn.addEventListener("click", enterAppFullscreen);
-previewFullscreenBtn.addEventListener("click", enterAppFullscreen);
-exitFullscreenBtn.addEventListener("click", exitAppFullscreen);
+    async function switchWorkspaceSlot(targetIndex, createIfMissing = false) {
+      syncCurrentSlotState();
+      exitMultiSelectMode();
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && document.body.classList.contains("app-fullscreen")) {
-    exitAppFullscreen();
-  }
-});
-
-// Toggle Mobile Quick Symbol Bar
-menuSymbolBarBtn.addEventListener("click", () => {
-  const isHidden = symbolBar.classList.toggle("hidden");
-  symbolBarState.textContent = isHidden ? "OFF" : "ON";
-  symbolBarState.classList.toggle("on", !isHidden);
-  toggleWaDropdown(false);
-});
-
-symbolBar.addEventListener("click", (e) => {
-  const btn = e.target.closest(".sym-key");
-  if (!btn || codeEditor.classList.contains("hidden")) return;
-  const text = btn.getAttribute("data-insert") || "";
-  const start = codeEditor.selectionStart;
-  const end = codeEditor.selectionEnd;
-  codeEditor.value = codeEditor.value.substring(0, start) + text + codeEditor.value.substring(end);
-  codeEditor.selectionStart = codeEditor.selectionEnd = start + text.length;
-  codeEditor.focus();
-  files[activeFile] = codeEditor.value;
-  recordUndoSnapshot(activeFile, codeEditor.value);
-  saveWorkspace();
-  updateLineNumbers();
-  updateCursorStatus();
-});
-
-// Toggle Word Wrap
-menuWordWrapBtn.addEventListener("click", () => {
-  const wrapped = codeEditor.classList.toggle("word-wrap");
-  wordWrapState.textContent = wrapped ? "ON" : "OFF";
-  wordWrapState.classList.toggle("on", wrapped);
-  if (!codeEditor.classList.contains("hidden")) {
-    lineNumbers.classList.toggle("hidden", wrapped);
-  }
-  toggleWaDropdown(false);
-});
-
-// Find in File
-let findMatches = [];
-let findIndex = -1;
-
-menuFindBtn.addEventListener("click", () => {
-  toggleWaDropdown(false);
-  findBar.classList.remove("hidden");
-  findInput.focus();
-  findInput.select();
-});
-
-closeFindBtn.addEventListener("click", () => {
-  findBar.classList.add("hidden");
-  findMatches = [];
-  findIndex = -1;
-});
-
-function runFindSearch(step = 0) {
-  const query = findInput.value;
-  const text = codeEditor.value;
-  findMatches = [];
-  if (query) {
-    const lowerText = text.toLowerCase();
-    const lowerQ = query.toLowerCase();
-    let pos = 0;
-    while ((pos = lowerText.indexOf(lowerQ, pos)) !== -1) {
-      findMatches.push(pos);
-      pos += lowerQ.length;
-    }
-  }
-
-  if (findMatches.length === 0) {
-    findIndex = -1;
-    findCount.textContent = "0/0";
-    return;
-  }
-
-  if (step === 0) {
-    findIndex = 0;
-  } else {
-    findIndex = (findIndex + step + findMatches.length) % findMatches.length;
-  }
-
-  findCount.textContent = `${findIndex + 1}/${findMatches.length}`;
-  const matchPos = findMatches[findIndex];
-  codeEditor.focus();
-  codeEditor.setSelectionRange(matchPos, matchPos + query.length);
-  updateCursorStatus();
-}
-
-findInput.addEventListener("input", () => runFindSearch(0));
-findNextBtn.addEventListener("click", () => runFindSearch(1));
-findPrevBtn.addEventListener("click", () => runFindSearch(-1));
-
-// Delete Text Range (From Start Text -> Until End Text)
-if (menuDeleteRangeBtn) {
-  menuDeleteRangeBtn.addEventListener("click", async () => {
-    toggleWaDropdown(false);
-    if (codeEditor.classList.contains("hidden")) return;
-
-    const currentSelection = codeEditor.value.substring(
-      codeEditor.selectionStart || 0,
-      codeEditor.selectionEnd || 0
-    );
-
-    const startQuery = await showCozyPopup({
-      title: "Delete From Text",
-      message: "Enter starting text/code where deletion should begin:",
-      icon: "✂️",
-      tone: "warn",
-      mode: "prompt",
-      placeholder: "Start text...",
-      defaultValue: currentSelection || "",
-      confirmText: "Next",
-      cancelText: "Cancel"
-    });
-    if (!startQuery) return;
-
-    const endQuery = await showCozyPopup({
-      title: "Delete Until Text",
-      message: "Enter ending text/code up to which text should be deleted:",
-      icon: "✂️",
-      tone: "danger",
-      mode: "prompt",
-      placeholder: "End text...",
-      defaultValue: "",
-      confirmText: "Delete",
-      cancelText: "Cancel"
-    });
-    if (!endQuery) return;
-
-    const text = codeEditor.value;
-    const startIdx = text.indexOf(startQuery);
-    if (startIdx === -1) {
-      await showCozyPopup({
-        title: "Not Found",
-        message: "Start text was not found in the current file.",
-        icon: "⚠️",
-        tone: "warn",
-        mode: "alert",
-        confirmText: "OK"
-      });
-      return;
-    }
-
-    const endSearchFrom = startIdx + startQuery.length;
-    const endMatchIdx = text.indexOf(endQuery, endSearchFrom);
-    if (endMatchIdx === -1) {
-      await showCozyPopup({
-        title: "End Not Found",
-        message: "End text was not found after the starting text.",
-        icon: "⚠️",
-        tone: "warn",
-        mode: "alert",
-        confirmText: "OK"
-      });
-      return;
-    }
-
-    const deleteEndIdx = endMatchIdx + endQuery.length;
-    recordUndoSnapshot(activeFile, text);
-
-    const updated = text.slice(0, startIdx) + text.slice(deleteEndIdx);
-    codeEditor.value = updated;
-    files[activeFile] = updated;
-    recordUndoSnapshot(activeFile, updated);
-
-    codeEditor.focus();
-    codeEditor.setSelectionRange(startIdx, startIdx);
-    saveWorkspace();
-    updateLineNumbers(true);
-    updateCursorStatus();
-  });
-}
-
-// Copy All Code
-menuCopyAllBtn.addEventListener("click", async () => {
-  toggleWaDropdown(false);
-  if (codeEditor.classList.contains("hidden")) return;
-  try {
-    await navigator.clipboard.writeText(codeEditor.value);
-    saveStatusLabel.textContent = "Copied ✓";
-    setTimeout(() => { saveStatusLabel.textContent = "Saved ✓"; }, 1400);
-  } catch (e) {
-    codeEditor.select();
-    document.execCommand("copy");
-  }
-});
-
-// Root Import / Export / Reset from Dropdown & Explorer
-menuImportZipBtn.addEventListener("click", () => {
-  toggleWaDropdown(false);
-  pendingUploadFolder = "";
-  zipInput.click();
-});
-
-rootImportZipBtn.addEventListener("click", () => {
-  pendingUploadFolder = "";
-  zipInput.click();
-});
-
-rootUploadBtn.addEventListener("click", () => {
-  pendingUploadFolder = "";
-  assetUploadInput.click();
-});
-
-menuSaveZipBtn.addEventListener("click", () => {
-  toggleWaDropdown(false);
-  exportZipBtn.click();
-});
-
-menuResetBtn.addEventListener("click", () => {
-  toggleWaDropdown(false);
-  resetBtn.click();
-});
-
-// =========================================================================
-// COZY POPUP DIALOGS
-// =========================================================================
-const cozyModalOverlay = document.getElementById("cozyModalOverlay");
-const cozyIcon = document.getElementById("cozyIcon");
-const cozyTitle = document.getElementById("cozyTitle");
-const cozyMessage = document.getElementById("cozyMessage");
-const cozyInput = document.getElementById("cozyInput");
-const cozyCancelBtn = document.getElementById("cozyCancelBtn");
-const cozyConfirmBtn = document.getElementById("cozyConfirmBtn");
-
-function showCozyPopup({
-  title = "Notice",
-  message = "",
-  icon = "✨",
-  tone = "info",
-  mode = "alert",
-  placeholder = "",
-  defaultValue = "",
-  confirmText = "OK",
-  cancelText = "Cancel"
-}) {
-  return new Promise((resolve) => {
-    cozyTitle.textContent = title;
-    cozyMessage.textContent = message;
-    cozyIcon.textContent = icon;
-    cozyIcon.className = `cozy-icon ${tone}`;
-
-    cozyConfirmBtn.textContent = confirmText;
-    cozyConfirmBtn.className = `cozy-btn confirm ${tone === "danger" ? "danger" : ""}`;
-    cozyCancelBtn.textContent = cancelText;
-
-    if (mode === "alert") {
-      cozyCancelBtn.classList.add("hidden");
-    } else {
-      cozyCancelBtn.classList.remove("hidden");
-    }
-
-    if (mode === "prompt") {
-      cozyInput.classList.remove("hidden");
-      cozyInput.value = defaultValue;
-      cozyInput.placeholder = placeholder;
-    } else {
-      cozyInput.classList.add("hidden");
-    }
-
-    cozyModalOverlay.classList.remove("hidden");
-
-    if (mode === "prompt") {
-      setTimeout(() => {
-        cozyInput.focus();
-        cozyInput.setSelectionRange(cozyInput.value.length, cozyInput.value.length);
-      }, 30);
-    } else {
-      setTimeout(() => cozyConfirmBtn.focus(), 30);
-    }
-
-    const cleanup = (result) => {
-      cozyModalOverlay.classList.add("hidden");
-      cozyConfirmBtn.onclick = null;
-      cozyCancelBtn.onclick = null;
-      cozyModalOverlay.onclick = null;
-      cozyInput.onkeydown = null;
-      resolve(result);
-    };
-
-    cozyConfirmBtn.onclick = () => {
-      cleanup(mode === "prompt" ? cozyInput.value : true);
-    };
-
-    cozyCancelBtn.onclick = () => {
-      cleanup(mode === "prompt" ? null : false);
-    };
-
-    cozyModalOverlay.onclick = (e) => {
-      if (e.target === cozyModalOverlay) {
-        cleanup(mode === "prompt" ? null : false);
+      if (targetIndex < 0) return;
+      if (targetIndex >= workspaces.length) {
+        if (!createIfMissing) return;
+        workspaces.push(createNewSlotObject());
       }
-    };
 
-    cozyInput.onkeydown = (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        cleanup(cozyInput.value);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        cleanup(null);
+      currentSlotIndex = targetIndex;
+      const slot = workspaces[currentSlotIndex];
+      files = slot.files;
+      emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
+      expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
+      activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
+
+      updateSlotBarUI();
+      fileTreeEl.classList.remove("slot-slide-in");
+      void fileTreeEl.offsetWidth;
+      fileTreeEl.classList.add("slot-slide-in");
+
+      openFile(activeFile, { syncTree: true, persist: false });
+      await persistNow();
+    }
+
+    async function deleteCurrentSection() {
+      if (workspaces.length <= 1) {
+        files = { "index.html": "", "style.css": "", "script.js": "" };
+        emptyFolders = [];
+        expandedFolders.clear();
+        activeFile = "index.html";
+        await persistNow();
+        openFile(activeFile);
+        return;
       }
-    };
-  });
-}
 
-let jszipLoadPromise = null;
-async function ensureJSZip() {
-  if (typeof window.JSZip !== "undefined") return true;
-  if (!jszipLoadPromise) {
-    jszipLoadPromise = new Promise((resolve) => {
-      const s = document.createElement("script");
-      s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
-      s.async = true;
-      s.onload = () => resolve(typeof window.JSZip !== "undefined");
-      s.onerror = () => {
-        jszipLoadPromise = null;
-        resolve(false);
-      };
-      document.head.appendChild(s);
-    });
-  }
-  const loaded = await jszipLoadPromise;
-  if (!loaded) {
-    await showCozyPopup({
-      title: "JSZip Offline",
-      message: "ZIP engine is unavailable offline right now. Connect once to cache it.",
-      icon: "📦",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return false;
-  }
-  return true;
-}
+      workspaces.splice(currentSlotIndex, 1);
+      currentSlotIndex = Math.min(currentSlotIndex, workspaces.length - 1);
+      const slot = workspaces[currentSlotIndex];
+      files = slot.files;
+      emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
+      expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
+      activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
 
-// =========================================================================
-// QUICK OPEN FILE TABS, SWIPE GESTURES & FOLDER TREE EXPLORER
-// =========================================================================
-function renderQuickTabs() {
-  if (!fileTabsBar) return;
-  fileTabsBar.innerHTML = "";
-
-  const priority = ["index.html", "style.css", "script.js"];
-  const allPaths = Object.keys(files).sort((a, b) => {
-    const baseA = a.split("/").pop();
-    const baseB = b.split("/").pop();
-    const idxA = priority.indexOf(baseA);
-    const idxB = priority.indexOf(baseB);
-    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-    if (idxA !== -1) return -1;
-    if (idxB !== -1) return 1;
-    return a.localeCompare(b);
-  });
-
-  for (const path of allPaths.slice(0, 12)) {
-    const baseName = path.split("/").pop();
-    const pill = document.createElement("button");
-    pill.type = "button";
-    pill.className = `file-tab-pill ${path === activeFile ? "active" : ""}`;
-    pill.innerHTML = `<span>${getFileIcon(baseName)}</span><span>${baseName}</span>`;
-    pill.title = path;
-    pill.onclick = () => openFile(path);
-    fileTabsBar.appendChild(pill);
-  }
-}
-
-function expandParentsOf(filePath) {
-  if (!filePath || !filePath.includes("/")) return;
-  const parts = filePath.split("/");
-  parts.pop();
-  let acc = "";
-  for (const part of parts) {
-    acc = acc ? `${acc}/${part}` : part;
-    expandedFolders.add(acc);
-  }
-}
-
-function findEntryHtml(preferredFolder = "") {
-  const keys = Object.keys(files);
-
-  if (preferredFolder) {
-    const prefix = preferredFolder + "/";
-    const folderKeys = keys.filter((k) => k.startsWith(prefix));
-    const exactIndex = folderKeys.find((k) => k.toLowerCase() === `${prefix}index.html`.toLowerCase());
-    if (exactIndex) return exactIndex;
-
-    const nestedIndex = folderKeys
-      .filter((k) => k.toLowerCase().endsWith("/index.html"))
-      .sort((a, b) => a.split("/").length - b.split("/").length)[0];
-    if (nestedIndex) return nestedIndex;
-
-    const anyFolderHtml = folderKeys
-      .filter((k) => k.toLowerCase().endsWith(".html"))
-      .sort((a, b) => a.split("/").length - b.split("/").length)[0];
-    if (anyFolderHtml) return anyFolderHtml;
-  }
-
-  const rootIndex = keys.find((k) => k.toLowerCase() === "index.html");
-  if (rootIndex) return rootIndex;
-
-  const nestedIndexes = keys
-    .filter((k) => k.toLowerCase().endsWith("/index.html"))
-    .sort((a, b) => a.split("/").length - b.split("/").length);
-  if (nestedIndexes.length > 0) return nestedIndexes[0];
-
-  const anyHtml = keys
-    .filter((k) => k.toLowerCase().endsWith(".html"))
-    .sort((a, b) => a.split("/").length - b.split("/").length);
-  return anyHtml[0] || null;
-}
-
-function getFileIcon(fileName) {
-  const lower = fileName.toLowerCase();
-  if (lower.endsWith(".html") || lower.endsWith(".htm")) return "🌐";
-  if (lower.endsWith(".css")) return "🎨";
-  if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "⚡";
-  if (lower.endsWith(".json")) return "📋";
-  if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"].some((ext) => lower.endsWith(ext))) return "🖼️";
-  if ([".mp3", ".wav", ".ogg", ".m4a", ".aac"].some((ext) => lower.endsWith(ext))) return "🎵";
-  if ([".mp4", ".webm"].some((ext) => lower.endsWith(ext))) return "🎬";
-  if ([".ttf", ".otf", ".woff", ".woff2"].some((ext) => lower.endsWith(ext))) return "🔤";
-  return "📄";
-}
-
-function buildTreeStructure() {
-  const root = { folders: {}, files: [] };
-
-  for (const folderPath of emptyFolders) {
-    const parts = folderPath.split("/").filter(Boolean);
-    let node = root;
-    let currentPath = "";
-    for (const part of parts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      if (!node.folders[part]) {
-        node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
-      }
-      node = node.folders[part];
-    }
-  }
-
-  for (const filePath of Object.keys(files)) {
-    const parts = filePath.split("/").filter(Boolean);
-    const fileName = parts.pop();
-    let node = root;
-    let currentPath = "";
-    for (const part of parts) {
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      if (!node.folders[part]) {
-        node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
-      }
-      node = node.folders[part];
-    }
-    node.files.push({ name: fileName, path: filePath });
-  }
-
-  return root;
-}
-
-// Track swipe gestures inside fileTreeEl:
-// - Left swipe on a row => Instant delete without confirmation popup
-// - Right swipe anywhere in file box => Open next/new independent workspace section
-let treeSwipeState = null;
-
-fileTreeEl.addEventListener(
-  "touchstart",
-  (e) => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    const row = e.target.closest(".tree-row");
-    treeSwipeState = {
-      startX: t.clientX,
-      startY: t.clientY,
-      lastX: t.clientX,
-      lastY: t.clientY,
-      row,
-      lockedAxis: null,
-      handled: false
-    };
-  },
-  { passive: true }
-);
-
-fileTreeEl.addEventListener(
-  "touchmove",
-  (e) => {
-    if (!treeSwipeState || e.touches.length !== 1) return;
-    const t = e.touches[0];
-    const dx = t.clientX - treeSwipeState.startX;
-    const dy = t.clientY - treeSwipeState.startY;
-    treeSwipeState.lastX = t.clientX;
-    treeSwipeState.lastY = t.clientY;
-
-    if (!treeSwipeState.lockedAxis) {
-      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      treeSwipeState.lockedAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      updateSlotBarUI();
+      openFile(activeFile, { syncTree: true, persist: false });
+      await persistNow();
     }
 
-    if (treeSwipeState.lockedAxis !== "x") return;
-
-    // Left swipe on a specific file/folder row => visual red delete slide
-    if (dx < 0 && treeSwipeState.row) {
-      const clamped = Math.max(dx, -110);
-      treeSwipeState.row.style.transition = "none";
-      treeSwipeState.row.style.transform = `translateX(${clamped}px)`;
-      treeSwipeState.row.classList.add("swipe-deleting");
-    } else if (dx > 0) {
-      // Right swipe anywhere in file box => subtle right shift feedback
-      const clamped = Math.min(dx * 0.35, 36);
-      fileTreeEl.style.transition = "none";
-      fileTreeEl.style.transform = `translateX(${clamped}px)`;
-    }
-  },
-  { passive: true }
-);
-
-fileTreeEl.addEventListener("touchend", async () => {
-  if (!treeSwipeState) return;
-  const state = treeSwipeState;
-  treeSwipeState = null;
-
-  const dx = state.lastX - state.startX;
-  const dy = state.lastY - state.startY;
-
-  if (state.row) {
-    state.row.style.transition = "transform 0.16s ease";
-    state.row.style.transform = "";
-    state.row.classList.remove("swipe-deleting");
-  }
-  fileTreeEl.style.transition = "transform 0.16s ease";
-  fileTreeEl.style.transform = "";
-
-  if (state.lockedAxis !== "x" || Math.abs(dx) < 62 || Math.abs(dx) < Math.abs(dy)) {
-    return;
-  }
-
-  // Prevent accidental click trigger after swipe
-  const blockClickOnce = (ev) => {
-    ev.stopPropagation();
-    ev.preventDefault();
-  };
-  fileTreeEl.addEventListener("click", blockClickOnce, { capture: true, once: true });
-  setTimeout(() => fileTreeEl.removeEventListener("click", blockClickOnce, { capture: true }), 80);
-
-  if (dx < -62 && state.row) {
-    const deleteType = state.row.getAttribute("data-swipe-type");
-    const deletePath = state.row.getAttribute("data-swipe-path");
-    if (deleteType === "file" && deletePath) {
-      await deleteFileInstant(deletePath);
-    } else if (deleteType === "folder" && deletePath) {
-      await deleteFolderInstant(deletePath);
-    }
-  } else if (dx > 62) {
-    // Right swipe anywhere in file box => open next / new workspace section
-    await switchWorkspaceSlot(currentSlotIndex + 1, true);
-  }
-});
-
-function renderTreeNodes(node, depth = 0) {
-  const fragment = document.createDocumentFragment();
-
-  const folderNames = Object.keys(node.folders).sort((a, b) => a.localeCompare(b));
-  for (const fName of folderNames) {
-    const folder = node.folders[fName];
-    const isExpanded = expandedFolders.has(folder.path);
-
-    const row = document.createElement("div");
-    row.className = "tree-row folder-row";
-    row.style.paddingLeft = `${8 + depth * 14}px`;
-    row.setAttribute("data-swipe-type", "folder");
-    row.setAttribute("data-swipe-path", folder.path);
-
-    const left = document.createElement("div");
-    left.className = "tree-left";
-    left.innerHTML = `
-      <span class="tree-caret">${isExpanded ? "▾" : "▸"}</span>
-      <span class="tree-icon">${isExpanded ? "📂" : "📁"}</span>
-      <span class="file-name">${folder.name}</span>
-    `;
-
-    const actions = document.createElement("div");
-    actions.className = "tree-row-actions";
-
-    const addInsideBtn = document.createElement("button");
-    addInsideBtn.className = "row-mini-btn plus-btn";
-    addInsideBtn.textContent = "+";
-    addInsideBtn.title = `Folder actions for ${folder.path}`;
-    addInsideBtn.onclick = (e) => {
+    prevSlotBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      openFolderActionSheet(folder.path);
-    };
+      if (currentSlotIndex > 0) switchWorkspaceSlot(currentSlotIndex - 1, false);
+    });
 
-    actions.appendChild(addInsideBtn);
+    // Save Button: Downloads ONLY the currently open active file
+    saveFileBtn.addEventListener("click", () => {
+      if (!activeFile || !(activeFile in files)) return;
+      const content = files[activeFile];
+      const baseName = activeFile.split("/").pop() || "file.txt";
+      const a = document.createElement("a");
 
-    row.appendChild(left);
-    row.appendChild(actions);
-
-    row.onclick = () => {
-      if (expandedFolders.has(folder.path)) {
-        expandedFolders.delete(folder.path);
+      if (typeof content === "string" && content.startsWith("data:")) {
+        a.href = content;
+        a.download = baseName;
+        a.click();
       } else {
-        expandedFolders.add(folder.path);
+        const blob = new Blob([String(content || "")], { type: getMimeType(baseName) });
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = baseName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-      renderFileTree();
-    };
+    });
 
-    fragment.appendChild(row);
+    // Undo / Redo Stack
+    const undoStack = {};
+    const redoStack = {};
+    let lastSnapshotTimer = null;
 
-    if (isExpanded) {
-      fragment.appendChild(renderTreeNodes(folder, depth + 1));
+    function getUndoKey(filePath) {
+      return `${currentSlotIndex}::${filePath}`;
     }
-  }
 
-  const priority = ["index.html", "style.css", "script.js"];
-  const sortedFiles = [...node.files].sort((a, b) => {
-    const idxA = priority.indexOf(a.name);
-    const idxB = priority.indexOf(b.name);
-    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-    if (idxA !== -1) return -1;
-    if (idxB !== -1) return 1;
-    return a.name.localeCompare(b.name);
-  });
+    function recordUndoSnapshot(filePath, value) {
+      const key = getUndoKey(filePath);
+      if (!undoStack[key]) undoStack[key] = [];
+      const stack = undoStack[key];
+      if (stack.length === 0 || stack[stack.length - 1] !== value) {
+        stack.push(value);
+        if (stack.length > 60) stack.shift();
+      }
+    }
 
-  for (const fileObj of sortedFiles) {
-    const row = document.createElement("div");
-    row.className = `tree-row ${fileObj.path === activeFile ? "active" : ""}`;
-    row.style.paddingLeft = `${14 + depth * 14}px`;
-    row.setAttribute("data-swipe-type", "file");
-    row.setAttribute("data-swipe-path", fileObj.path);
+    undoBtn.addEventListener("click", () => {
+      if (codeEditor.classList.contains("hidden")) return;
+      const key = getUndoKey(activeFile);
+      const stack = undoStack[key] || [];
+      if (stack.length <= 1) return;
+      if (!redoStack[key]) redoStack[key] = [];
+      redoStack[key].push(stack.pop());
+      const prev = stack[stack.length - 1];
+      codeEditor.value = prev;
+      files[activeFile] = prev;
+      saveWorkspace();
+      updateLineNumbers(true);
+      refreshEditorHighlights();
+    });
 
-    const left = document.createElement("div");
-    left.className = "tree-left";
-    left.innerHTML = `
-      <span class="tree-icon">${getFileIcon(fileObj.name)}</span>
-      <span class="file-name">${fileObj.name}</span>
-    `;
+    redoBtn.addEventListener("click", () => {
+      if (codeEditor.classList.contains("hidden")) return;
+      const key = getUndoKey(activeFile);
+      const rStack = redoStack[key] || [];
+      if (rStack.length === 0) return;
+      const next = rStack.pop();
+      if (!undoStack[key]) undoStack[key] = [];
+      undoStack[key].push(next);
+      codeEditor.value = next;
+      files[activeFile] = next;
+      saveWorkspace();
+      updateLineNumbers(true);
+      refreshEditorHighlights();
+    });
 
-    row.appendChild(left);
+    // Menus, Privacy Modal & Fullscreen
+    function toggleWaDropdown(forceState) {
+      const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
+      waDropdown.classList.toggle("hidden", !show);
+      moreMenuBtn.setAttribute("aria-expanded", String(show));
+    }
 
-    row.onclick = () => {
-      openFile(fileObj.path);
+    function togglePreviewDropdown(forceState) {
+      const show = typeof forceState === "boolean" ? forceState : previewDropdown.classList.contains("hidden");
+      previewDropdown.classList.toggle("hidden", !show);
+      previewMoreBtn.setAttribute("aria-expanded", String(show));
+    }
+
+    moreMenuBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleWaDropdown(); });
+    previewMoreBtn.addEventListener("click", (e) => { e.stopPropagation(); togglePreviewDropdown(); });
+
+    document.addEventListener("click", (e) => {
+      if (!waDropdown.classList.contains("hidden") && !waDropdown.contains(e.target) && !moreMenuBtn.contains(e.target)) {
+        toggleWaDropdown(false);
+      }
+      if (!previewDropdown.classList.contains("hidden") && !previewDropdown.contains(e.target) && !previewMoreBtn.contains(e.target)) {
+        togglePreviewDropdown(false);
+      }
+      if (!fileAreaContextMenu.classList.contains("hidden") && !fileAreaContextMenu.contains(e.target)) {
+        hideFileAreaContextMenu();
+      }
+    });
+
+    menuPrivacyBtn.addEventListener("click", () => {
+      toggleWaDropdown(false);
+      privacyModalOverlay.classList.remove("hidden");
+    });
+
+    function closePrivacyModal() { privacyModalOverlay.classList.add("hidden"); }
+    closePrivacyTopBtn.addEventListener("click", closePrivacyModal);
+    closePrivacyBottomBtn.addEventListener("click", closePrivacyModal);
+    privacyModalOverlay.addEventListener("click", (e) => { if (e.target === privacyModalOverlay) closePrivacyModal(); });
+
+    function enterAppFullscreen() {
+      toggleWaDropdown(false);
+      togglePreviewDropdown(false);
       closeMobileSidebar();
-    };
-
-    fragment.appendChild(row);
-  }
-
-  return fragment;
-}
-
-function renderFileTree() {
-  fileTreeEl.innerHTML = "";
-  const tree = buildTreeStructure();
-  fileTreeEl.appendChild(renderTreeNodes(tree, 0));
-  renderQuickTabs();
-  updateSlotBarUI();
-}
-
-// =========================================================================
-// FOLDER '+' BOTTOM ACTION SHEET
-// =========================================================================
-function openFolderActionSheet(folderPath) {
-  sheetTargetFolder = folderPath;
-  sheetFolderTitle.textContent = folderPath;
-  folderSheetOverlay.classList.remove("hidden");
-}
-
-function closeFolderActionSheet() {
-  folderSheetOverlay.classList.add("hidden");
-}
-
-closeSheetBtn.addEventListener("click", closeFolderActionSheet);
-folderSheetOverlay.addEventListener("click", (e) => {
-  if (e.target === folderSheetOverlay) closeFolderActionSheet();
-});
-
-sheetNewFileBtn.addEventListener("click", () => {
-  const folder = sheetTargetFolder;
-  closeFolderActionSheet();
-  promptCreateFile(`${folder}/`);
-});
-
-sheetNewFolderBtn.addEventListener("click", () => {
-  const folder = sheetTargetFolder;
-  closeFolderActionSheet();
-  promptCreateFolder(`${folder}/`);
-});
-
-sheetImportZipBtn.addEventListener("click", () => {
-  pendingUploadFolder = sheetTargetFolder;
-  closeFolderActionSheet();
-  zipInput.click();
-});
-
-sheetUploadFilesBtn.addEventListener("click", () => {
-  pendingUploadFolder = sheetTargetFolder;
-  closeFolderActionSheet();
-  assetUploadInput.click();
-});
-
-sheetExportZipBtn.addEventListener("click", async () => {
-  if (!(await ensureJSZip())) return;
-  const folder = sheetTargetFolder;
-  closeFolderActionSheet();
-
-  const prefix = folder + "/";
-  const folderFileEntries = Object.entries(files).filter(([p]) => p.startsWith(prefix));
-
-  if (folderFileEntries.length === 0) {
-    await showCozyPopup({
-      title: "Empty Folder",
-      message: `"${folder}" has no files to export yet.`,
-      icon: "📂",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return;
-  }
-
-  const zip = new JSZip();
-  for (const [path, content] of folderFileEntries) {
-    const relativeInside = path.slice(prefix.length);
-    if (typeof content === "string" && content.startsWith("data:")) {
-      zip.file(relativeInside, content.split(",")[1], { base64: true });
-    } else {
-      zip.file(relativeInside, content);
+      document.body.classList.add("app-fullscreen");
+      exitFullscreenBtn.classList.remove("hidden");
     }
-  }
 
-  const blob = await zip.generateAsync({ type: "blob" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  const safeZipName = folder.split("/").pop().replace(/[^a-z0-9_-]/gi, "_") || "folder";
-  a.download = `${safeZipName}.zip`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-sheetRenameFolderBtn.addEventListener("click", async () => {
-  const oldFolder = sheetTargetFolder;
-  closeFolderActionSheet();
-
-  const newName = await showCozyPopup({
-    title: "Rename Folder",
-    message: "Enter new folder path or name:",
-    icon: "✏️",
-    tone: "info",
-    mode: "prompt",
-    placeholder: "e.g. BidBaaz",
-    defaultValue: oldFolder,
-    confirmText: "Rename",
-    cancelText: "Cancel"
-  });
-
-  if (!newName) return;
-  const cleanNew = newName.trim().replace(/^\/+|\/+$/g, "").replace(/\/+/g, "/");
-  if (!cleanNew || cleanNew === oldFolder) return;
-
-  const oldPrefix = oldFolder + "/";
-  const newPrefix = cleanNew + "/";
-
-  const updatedFiles = {};
-  for (const [path, content] of Object.entries(files)) {
-    if (path.startsWith(oldPrefix)) {
-      updatedFiles[newPrefix + path.slice(oldPrefix.length)] = content;
-    } else {
-      updatedFiles[path] = content;
+    function exitAppFullscreen() {
+      document.body.classList.remove("app-fullscreen");
+      exitFullscreenBtn.classList.add("hidden");
     }
-  }
-  files = updatedFiles;
 
-  emptyFolders = emptyFolders.map((f) => {
-    if (f === oldFolder) return cleanNew;
-    if (f.startsWith(oldPrefix)) return newPrefix + f.slice(oldPrefix.length);
-    return f;
-  });
+    menuFullscreenBtn.addEventListener("click", enterAppFullscreen);
+    previewFullscreenBtn.addEventListener("click", enterAppFullscreen);
+    exitFullscreenBtn.addEventListener("click", exitAppFullscreen);
 
-  if (activeFile.startsWith(oldPrefix)) {
-    activeFile = newPrefix + activeFile.slice(oldPrefix.length);
-  }
-
-  expandedFolders.delete(oldFolder);
-  expandedFolders.add(cleanNew);
-  await persistNow();
-  openFile(activeFile);
-});
-
-// Tap active filename in topbar to rename active file
-currentFileNameEl.addEventListener("click", async () => {
-  const oldPath = activeFile;
-  const newName = await showCozyPopup({
-    title: "Rename File",
-    message: "Enter new file name:",
-    icon: "✏️",
-    tone: "info",
-    mode: "prompt",
-    placeholder: "e.g. index.html",
-    defaultValue: oldPath,
-    confirmText: "Rename",
-    cancelText: "Cancel"
-  });
-
-  if (!newName) return;
-  const cleanNew = newName.trim().replace(/^\/+/, "").replace(/\/+/g, "/");
-  if (!cleanNew || cleanNew === oldPath || cleanNew.endsWith("/")) return;
-
-  if (cleanNew in files) {
-    await showCozyPopup({
-      title: "Name Taken",
-      message: `"${cleanNew}" already exists.`,
-      icon: "⚠️",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
+    menuSymbolBarBtn.addEventListener("click", () => {
+      const isHidden = symbolBar.classList.toggle("hidden");
+      symbolBarState.textContent = isHidden ? "OFF" : "ON";
+      symbolBarState.classList.toggle("on", !isHidden);
+      toggleWaDropdown(false);
     });
-    return;
-  }
 
-  files[cleanNew] = files[oldPath];
-  delete files[oldPath];
-  await persistNow();
-  openFile(cleanNew);
-});
-
-// =========================================================================
-// FILE OPERATIONS & EDITOR (Instant Swipe Delete)
-// =========================================================================
-function openFile(fileName, { syncTree = true, persist = true } = {}) {
-  if (!(fileName in files)) return;
-  activeFile = fileName;
-  expandParentsOf(fileName);
-  currentFileNameEl.textContent = fileName;
-  currentFileNameEl.title = `${fileName} (Tap to rename)`;
-
-  const content = files[fileName];
-  assetAudio.pause();
-  assetAudio.src = "";
-
-  const isWrapped = codeEditor.classList.contains("word-wrap");
-
-  if (typeof content === "string" && content.startsWith("data:image/")) {
-    codeEditor.classList.add("hidden");
-    lineNumbers.classList.add("hidden");
-    assetPreviewBox.classList.remove("hidden");
-    assetImage.classList.remove("hidden");
-    assetAudio.classList.add("hidden");
-    assetImage.src = content;
-    assetInfo.textContent = `Image Asset: ${fileName}`;
-    cursorPosLabel.textContent = "Image Preview";
-  } else if (typeof content === "string" && content.startsWith("data:audio/")) {
-    codeEditor.classList.add("hidden");
-    lineNumbers.classList.add("hidden");
-    assetPreviewBox.classList.remove("hidden");
-    assetImage.classList.add("hidden");
-    assetAudio.classList.remove("hidden");
-    assetAudio.src = content;
-    assetInfo.textContent = `Audio Asset: ${fileName}`;
-    cursorPosLabel.textContent = "Audio Preview";
-  } else if (typeof content === "string" && content.startsWith("data:")) {
-    codeEditor.classList.add("hidden");
-    lineNumbers.classList.add("hidden");
-    assetPreviewBox.classList.remove("hidden");
-    assetImage.classList.add("hidden");
-    assetAudio.classList.add("hidden");
-    assetInfo.textContent = `Binary Asset: ${fileName}`;
-    cursorPosLabel.textContent = "Binary File";
-  } else {
-    assetPreviewBox.classList.add("hidden");
-    codeEditor.classList.remove("hidden");
-    lineNumbers.classList.toggle("hidden", isWrapped);
-    codeEditor.value = content;
-    recordUndoSnapshot(fileName, content);
-    updateLineNumbers(true);
-    updateCursorStatus();
-  }
-
-  if (syncTree) {
-    renderFileTree();
-  }
-  if (persist) {
-    saveWorkspace();
-  }
-}
-
-async function deleteFileInstant(fileName) {
-  if (!(fileName in files)) return;
-
-  delete files[fileName];
-  delete undoStack[getUndoKey(fileName)];
-  delete redoStack[getUndoKey(fileName)];
-
-  if (Object.keys(files).length === 0) {
-    files["index.html"] = "";
-  }
-
-  if (!(activeFile in files)) {
-    activeFile = findEntryHtml() || Object.keys(files)[0];
-  }
-
-  await persistNow();
-  openFile(activeFile);
-}
-
-async function deleteFolderInstant(folderPath) {
-  const prefix = folderPath + "/";
-  const insideFiles = Object.keys(files).filter((k) => k.startsWith(prefix));
-
-  for (const f of insideFiles) {
-    delete files[f];
-    delete undoStack[getUndoKey(f)];
-    delete redoStack[getUndoKey(f)];
-  }
-  emptyFolders = emptyFolders.filter((f) => f !== folderPath && !f.startsWith(prefix));
-
-  if (Object.keys(files).length === 0) {
-    files["index.html"] = "";
-  }
-
-  if (!(activeFile in files)) {
-    activeFile = findEntryHtml() || Object.keys(files)[0];
-  }
-
-  await persistNow();
-  openFile(activeFile);
-}
-
-let lastLineCount = 0;
-function updateLineNumbers(force = false) {
-  let count = 1;
-  const val = codeEditor.value;
-  for (let i = 0; i < val.length; i++) {
-    if (val.charCodeAt(i) === 10) count++;
-  }
-  if (!force && count === lastLineCount) return;
-  lastLineCount = count;
-
-  let out = "";
-  for (let i = 1; i <= count; i++) {
-    out += i === count ? String(i) : i + "\n";
-  }
-  lineNumbers.textContent = out;
-}
-
-function updateCursorStatus() {
-  if (!cursorPosLabel || codeEditor.classList.contains("hidden")) return;
-  const pos = codeEditor.selectionStart || 0;
-  const before = codeEditor.value.slice(0, pos);
-  const lines = before.split("\n");
-  const ln = lines.length;
-  const col = lines[lines.length - 1].length + 1;
-  cursorPosLabel.textContent = `Ln ${ln}, Col ${col}`;
-}
-
-codeEditor.addEventListener("input", () => {
-  files[activeFile] = codeEditor.value;
-  saveWorkspace();
-  updateLineNumbers();
-  updateCursorStatus();
-
-  clearTimeout(lastSnapshotTimer);
-  lastSnapshotTimer = setTimeout(() => {
-    recordUndoSnapshot(activeFile, codeEditor.value);
-  }, 450);
-});
-
-codeEditor.addEventListener("click", updateCursorStatus);
-codeEditor.addEventListener("keyup", updateCursorStatus);
-
-codeEditor.addEventListener("scroll", () => {
-  lineNumbers.scrollTop = codeEditor.scrollTop;
-});
-
-codeEditor.addEventListener("keydown", (e) => {
-  if (e.key === "Tab") {
-    e.preventDefault();
-    const start = codeEditor.selectionStart;
-    const end = codeEditor.selectionEnd;
-    codeEditor.value = codeEditor.value.substring(0, start) + "  " + codeEditor.value.substring(end);
-    codeEditor.selectionStart = codeEditor.selectionEnd = start + 2;
-    files[activeFile] = codeEditor.value;
-    recordUndoSnapshot(activeFile, codeEditor.value);
-    saveWorkspace();
-    updateLineNumbers();
-    updateCursorStatus();
-  }
-});
-
-async function promptCreateFile(prefix = "") {
-  const name = await showCozyPopup({
-    title: "New File",
-    message: "Enter file name (e.g. index.html, style.css, script.js)",
-    icon: "📄",
-    tone: "info",
-    mode: "prompt",
-    placeholder: "e.g. index.html, style.css, script.js",
-    defaultValue: prefix,
-    confirmText: "Create",
-    cancelText: "Cancel"
-  });
-
-  if (!name) return;
-  const cleanName = name.trim().replace(/^\/+/, "").replace(/\/+/g, "/");
-  if (!cleanName || cleanName.endsWith("/")) return;
-
-  if (cleanName in files) {
-    await showCozyPopup({
-      title: "Already Exists",
-      message: `"${cleanName}" is already in your project.`,
-      icon: "✨",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "Open File"
+    symbolBar.addEventListener("click", (e) => {
+      const btn = e.target.closest(".sym-key");
+      if (!btn || codeEditor.classList.contains("hidden")) return;
+      const text = btn.getAttribute("data-insert") || "";
+      const start = codeEditor.selectionStart;
+      const end = codeEditor.selectionEnd;
+      codeEditor.value = codeEditor.value.substring(0, start) + text + codeEditor.value.substring(end);
+      codeEditor.selectionStart = codeEditor.selectionEnd = start + text.length;
+      codeEditor.focus();
+      files[activeFile] = codeEditor.value;
+      recordUndoSnapshot(activeFile, codeEditor.value);
+      saveWorkspace();
+      updateLineNumbers();
+      refreshEditorHighlights();
     });
-    openFile(cleanName);
-    closeMobileSidebar();
-    return;
-  }
 
-  files[cleanName] = "";
-  await persistNow();
-  openFile(cleanName);
-  closeMobileSidebar();
-}
-
-async function promptCreateFolder(prefix = "") {
-  const name = await showCozyPopup({
-    title: "New Folder",
-    message: "Enter folder name (e.g. BidBaaz, css, images)",
-    icon: "📁",
-    tone: "info",
-    mode: "prompt",
-    placeholder: "e.g. BidBaaz, css, images",
-    defaultValue: prefix,
-    confirmText: "Create",
-    cancelText: "Cancel"
-  });
-
-  if (!name) return;
-  const cleanFolder = name.trim().replace(/^\/+|\/+$/g, "").replace(/\/+/g, "/");
-  if (!cleanFolder) return;
-
-  if (!emptyFolders.includes(cleanFolder)) {
-    emptyFolders.push(cleanFolder);
-  }
-  expandParentsOf(cleanFolder + "/dummy");
-  expandedFolders.add(cleanFolder);
-  await persistNow();
-  renderFileTree();
-}
-
-newFileBtn.addEventListener("click", () => promptCreateFile(""));
-newFolderBtn.addEventListener("click", () => promptCreateFolder(""));
-
-resetBtn.addEventListener("click", async () => {
-  const confirmed = await showCozyPopup({
-    title: "Reset Current Section?",
-    message: "This will clear files in this section and leave empty index.html, style.css, and script.js.",
-    icon: "🧹",
-    tone: "danger",
-    mode: "confirm",
-    confirmText: "Reset",
-    cancelText: "Cancel"
-  });
-
-  if (!confirmed) return;
-
-  files = {
-    "index.html": "",
-    "style.css": "",
-    "script.js": ""
-  };
-  emptyFolders = [];
-  expandedFolders.clear();
-  await persistNow();
-  openFile("index.html");
-});
-
-// =========================================================================
-// ZIP IMPORT, MULTI-FILE UPLOAD & PROJECT EXPORT
-// =========================================================================
-const TEXT_EXTS = new Set([
-  ".html", ".htm", ".css", ".js", ".mjs", ".cjs", ".ts", ".jsx", ".tsx",
-  ".json", ".svg", ".txt", ".md", ".xml", ".csv", ".yml", ".yaml", ".ini", ".env"
-]);
-
-function getMimeType(path) {
-  const lower = path.toLowerCase();
-  const ext = lower.includes(".") ? "." + lower.split(".").pop() : "";
-  const map = {
-    ".html": "text/html",
-    ".htm": "text/html",
-    ".css": "text/css",
-    ".js": "application/javascript",
-    ".mjs": "application/javascript",
-    ".json": "application/json",
-    ".svg": "image/svg+xml",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".webp": "image/webp",
-    ".ico": "image/x-icon",
-    ".bmp": "image/bmp",
-    ".mp3": "audio/mpeg",
-    ".wav": "audio/wav",
-    ".ogg": "audio/ogg",
-    ".m4a": "audio/mp4",
-    ".aac": "audio/aac",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
-    ".ttf": "font/ttf",
-    ".otf": "font/otf",
-    ".woff": "font/woff",
-    ".woff2": "font/woff2",
-    ".eot": "application/vnd.ms-fontobject",
-    ".pdf": "application/pdf"
-  };
-  return map[ext] || "application/octet-stream";
-}
-
-function isTextFile(path) {
-  const lower = path.toLowerCase();
-  const ext = lower.includes(".") ? "." + lower.split(".").pop() : "";
-  return TEXT_EXTS.has(ext);
-}
-
-zipInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  const targetFolder = pendingUploadFolder;
-  pendingUploadFolder = "";
-  if (!file) return;
-
-  if (!(await ensureJSZip())) {
-    zipInput.value = "";
-    return;
-  }
-
-  try {
-    const zip = await JSZip.loadAsync(file);
-    const validPaths = [];
-    const folderPathsFromZip = [];
-
-    zip.forEach((relativePath, entry) => {
-      const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-      if (!normalized || normalized.startsWith("__MACOSX/") || normalized.endsWith(".DS_Store")) return;
-      if (entry.dir) {
-        folderPathsFromZip.push(normalized.replace(/\/+$/, ""));
-      } else {
-        validPaths.push(normalized);
+    menuWordWrapBtn.addEventListener("click", () => {
+      const wrapped = codeEditor.classList.toggle("word-wrap");
+      highlightBackdrop.classList.toggle("word-wrap", wrapped);
+      wordWrapState.textContent = wrapped ? "ON" : "OFF";
+      wordWrapState.classList.toggle("on", wrapped);
+      if (!codeEditor.classList.contains("hidden")) {
+        lineNumbers.classList.toggle("hidden", wrapped);
       }
+      toggleWaDropdown(false);
     });
 
-    if (validPaths.length === 0) {
-      await showCozyPopup({
-        title: "Empty ZIP",
-        message: "No valid files were found inside this ZIP archive.",
-        icon: "📦",
-        tone: "warn",
-        mode: "alert",
-        confirmText: "OK"
-      });
-      return;
-    }
-
-    let commonPrefix = "";
-    const firstParts = validPaths[0].split("/");
-    if (firstParts.length > 1) {
-      const candidate = firstParts[0] + "/";
-      if (validPaths.every((p) => p.startsWith(candidate))) {
-        commonPrefix = candidate;
+    menuSaveZipBtn.addEventListener("click", async () => {
+      toggleWaDropdown(false);
+      if (!(await ensureJSZip())) return;
+      const zip = new JSZip();
+      for (const [path, content] of Object.entries(files)) {
+        if (typeof content === "string" && content.startsWith("data:")) {
+          zip.file(path, content.split(",")[1], { base64: true });
+        } else {
+          zip.file(path, content);
+        }
       }
-    }
-
-    const folderPrefix = targetFolder ? `${targetFolder}/` : "";
-    let addedCount = 0;
-
-    if (targetFolder) {
-      expandParentsOf(targetFolder + "/dummy");
-      expandedFolders.add(targetFolder);
-      if (!emptyFolders.includes(targetFolder)) {
-        emptyFolders.push(targetFolder);
-      }
-    }
-
-    for (const fDir of folderPathsFromZip) {
-      const stripped = commonPrefix && fDir.startsWith(commonPrefix) ? fDir.slice(commonPrefix.length) : fDir;
-      if (!stripped) continue;
-      const mappedDir = folderPrefix + stripped;
-      expandParentsOf(mappedDir + "/dummy");
-      expandedFolders.add(mappedDir);
-    }
-
-    for (const fullPath of validPaths) {
-      const cleanPath = commonPrefix ? fullPath.slice(commonPrefix.length) : fullPath;
-      if (!cleanPath) continue;
-
-      const destPath = folderPrefix + cleanPath;
-      if (isTextFile(cleanPath)) {
-        files[destPath] = await zip.file(fullPath).async("string");
-      } else {
-        const base64 = await zip.file(fullPath).async("base64");
-        const mime = getMimeType(cleanPath);
-        files[destPath] = `data:${mime};base64,${base64}`;
-      }
-      expandParentsOf(destPath);
-      addedCount++;
-    }
-
-    const entryHtml = findEntryHtml(targetFolder) || Object.keys(files)[0];
-    activeFile = entryHtml;
-    openFile(entryHtml, { syncTree: true, persist: false });
-    await persistNow();
-    closeMobileSidebar();
-
-    await showCozyPopup({
-      title: "ZIP Imported",
-      message: targetFolder
-        ? `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} directly into "${targetFolder}/".`
-        : `Fetched ${addedCount} file${addedCount === 1 ? "" : "s"} into Section ${currentSlotIndex + 1}.`,
-      icon: "🎉",
-      tone: "info",
-      mode: "alert",
-      confirmText: "Awesome"
-    });
-  } catch (err) {
-    await showCozyPopup({
-      title: "Import Error",
-      message: "Could not read ZIP file: " + err.message,
-      icon: "⚠️",
-      tone: "danger",
-      mode: "alert",
-      confirmText: "OK"
-    });
-  } finally {
-    zipInput.value = "";
-  }
-});
-
-assetUploadInput.addEventListener("change", async (e) => {
-  const selectedFiles = Array.from(e.target.files || []);
-  const targetFolder = pendingUploadFolder;
-  pendingUploadFolder = "";
-  if (selectedFiles.length === 0) return;
-
-  const folderPrefix = targetFolder ? `${targetFolder}/` : "";
-  let lastAddedPath = "";
-
-  for (const f of selectedFiles) {
-    const destPath = folderPrefix + f.name;
-    if (isTextFile(f.name)) {
-      files[destPath] = await f.text();
-    } else {
-      files[destPath] = await readFileAsDataURL(f);
-    }
-    lastAddedPath = destPath;
-  }
-
-  if (targetFolder) {
-    expandedFolders.add(targetFolder);
-  }
-  if (lastAddedPath) {
-    activeFile = lastAddedPath;
-    openFile(lastAddedPath, { syncTree: true, persist: false });
-  }
-  await persistNow();
-  closeMobileSidebar();
-
-  await showCozyPopup({
-    title: "Files Added",
-    message: `Saved ${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"}${targetFolder ? ` to "${targetFolder}/"` : ""}.`,
-    icon: "📎",
-    tone: "info",
-    mode: "alert",
-    confirmText: "Done"
-  });
-
-  assetUploadInput.value = "";
-});
-
-function readFileAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-exportZipBtn.addEventListener("click", async () => {
-  if (!(await ensureJSZip())) return;
-  const zip = new JSZip();
-
-  for (const [path, content] of Object.entries(files)) {
-    if (typeof content === "string" && content.startsWith("data:")) {
-      const base64Data = content.split(",")[1];
-      zip.file(path, base64Data, { base64: true });
-    } else {
-      zip.file(path, content);
-    }
-  }
-
-  for (const folder of emptyFolders) {
-    zip.folder(folder);
-  }
-
-  const blob = await zip.generateAsync({ type: "blob" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `pikaedit-section-${currentSlotIndex + 1}.zip`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-// =========================================================================
-// LIVE RUNNER, VIRTUAL FILE SYSTEM & EXTERNAL BROWSER BUNDLER
-// =========================================================================
-function resolvePath(baseFile, targetPath) {
-  if (!targetPath) return null;
-  const trimmed = targetPath.trim();
-  if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-
-  const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/");
-  if (!cleanTarget) return null;
-
-  const baseParts = baseFile.split("/");
-  baseParts.pop();
-
-  const workingParts = cleanTarget.startsWith("/") ? [] : baseParts;
-  const targetParts = cleanTarget.replace(/^\/+/, "").split("/");
-
-  for (const part of targetParts) {
-    if (part === "." || part === "") continue;
-    if (part === "..") {
-      if (workingParts.length > 0) workingParts.pop();
-    } else {
-      workingParts.push(part);
-    }
-  }
-  return workingParts.join("/");
-}
-
-function lookupAssetUrl(resolvedPath, assetMap) {
-  if (!resolvedPath) return null;
-  if (assetMap[resolvedPath]) return assetMap[resolvedPath];
-
-  const lower = resolvedPath.toLowerCase();
-  const exactLowerKey = Object.keys(assetMap).find((k) => k.toLowerCase() === lower);
-  if (exactLowerKey) return assetMap[exactLowerKey];
-
-  const targetBase = lower.split("/").pop();
-  if (targetBase) {
-    const baseMatchKey = Object.keys(assetMap).find((k) => k.toLowerCase().split("/").pop() === targetBase);
-    if (baseMatchKey) return assetMap[baseMatchKey];
-  }
-
-  return null;
-}
-
-function toSafeDataUrl(content, path) {
-  if (typeof content === "string" && content.startsWith("data:")) {
-    return content;
-  }
-  const mime = getMimeType(path);
-  try {
-    const bytes = new TextEncoder().encode(String(content || ""));
-    let binary = "";
-    const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-    }
-    return `data:${mime};base64,${btoa(binary)}`;
-  } catch (e) {
-    return `data:${mime};charset=utf-8,${encodeURIComponent(String(content || ""))}`;
-  }
-}
-
-function isMediaOrImageFile(path) {
-  const lower = path.toLowerCase();
-  return [
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
-    ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".mp4", ".webm"
-  ].some((ext) => lower.endsWith(ext));
-}
-
-function rewriteCssContent(cssText, cssFilePath, assetMap) {
-  let rewritten = cssText.replace(/url\(\s*(['"]?)([^'"()]+)\1\s*\)/gi, (match, quote, rawUrl) => {
-    const resolved = resolvePath(cssFilePath, rawUrl);
-    const mapped = lookupAssetUrl(resolved, assetMap);
-    if (mapped) return `url("${mapped}")`;
-    return match;
-  });
-
-  rewritten = rewritten.replace(/@import\s+(['"])([^'"]+)\1/gi, (match, quote, rawUrl) => {
-    const resolved = resolvePath(cssFilePath, rawUrl);
-    const mapped = lookupAssetUrl(resolved, assetMap);
-    if (mapped) return `@import "${mapped}"`;
-    return match;
-  });
-
-  return rewritten;
-}
-
-function revokePreviousBlobs() {
-  for (const url of activeBlobUrls) {
-    try {
+      for (const folder of emptyFolders) zip.folder(folder);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pikaedit-section-${currentSlotIndex + 1}.zip`;
+      a.click();
       URL.revokeObjectURL(url);
-    } catch (e) {}
-  }
-  activeBlobUrls = [];
-}
-
-function revokeBrowserTabBlobs() {
-  for (const url of browserTabBlobUrls) {
-    try {
-      URL.revokeObjectURL(url);
-    } catch (e) {}
-  }
-  browserTabBlobUrls = [];
-}
-
-function createTrackedBlobUrl(content, mime, bucket = activeBlobUrls) {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  bucket.push(url);
-  return url;
-}
-
-function findContextualHtml() {
-  if (activeFile.toLowerCase().endsWith(".html")) return activeFile;
-
-  const parts = activeFile.split("/");
-  parts.pop();
-  while (parts.length > 0) {
-    const folder = parts.join("/");
-    const found = findEntryHtml(folder);
-    if (found) return found;
-    parts.pop();
-  }
-  return findEntryHtml("");
-}
-
-function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
-  let htmlContent = files[htmlPath];
-
-  htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, cssBody) => {
-    const rewrittenInline = rewriteCssContent(cssBody, htmlPath, assetMap);
-    return `<style${attrs}>${rewrittenInline}</style>`;
-  });
-
-  // Rewrite inline style="... url(...) ..." attributes
-  htmlContent = htmlContent.replace(
-    /\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi,
-    (match, quote, styleBody) => {
-      if (!/url\s*\(/i.test(styleBody)) return match;
-      const rewrittenStyle = rewriteCssContent(styleBody, htmlPath, assetMap);
-      return `style=${quote}${rewrittenStyle}${quote}`;
-    }
-  );
-
-  htmlContent = htmlContent.replace(
-    /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
-    (match, attr, quote, rawPath) => {
-      const resolved = resolvePath(htmlPath, rawPath);
-      if (!resolved) return match;
-
-      if (attr.toLowerCase() === "href" && resolved.toLowerCase().endsWith(".html")) {
-        if (isExternalBrowser && htmlPagesMap) {
-          const mappedPage = lookupAssetUrl(resolved, htmlPagesMap);
-          if (mappedPage) return `${attr}=${quote}${mappedPage}${quote}`;
-        }
-        return match;
-      }
-
-      const mapped = lookupAssetUrl(resolved, assetMap);
-      if (mapped) {
-        return `${attr}=${quote}${mapped}${quote}`;
-      }
-      return match;
-    }
-  );
-
-  htmlContent = htmlContent.replace(/\bsrcset\s*=\s*(["'])([^"']+)\1/gi, (match, quote, srcsetVal) => {
-    const rewrittenSet = srcsetVal
-      .split(",")
-      .map((item) => {
-        const parts = item.trim().split(/\s+/);
-        if (!parts[0]) return item;
-        const resolved = resolvePath(htmlPath, parts[0]);
-        const mapped = lookupAssetUrl(resolved, assetMap);
-        if (mapped) parts[0] = mapped;
-        return parts.join(" ");
-      })
-      .join(", ");
-    return `srcset=${quote}${rewrittenSet}${quote}`;
-  });
-
-  const vfsPayload = JSON.stringify({
-    baseFile: htmlPath,
-    assets: assetMap,
-    pages: htmlPagesMap || {},
-    external: isExternalBrowser
-  });
-
-  const runtimeHook = `
-  <script>
-    (function() {
-      const VFS = ${vfsPayload};
-      const warnedMissing = new Set();
-
-      function resolveFromMap(raw, mapObj, logMissing = false) {
-        if (!raw || typeof raw !== 'string') return null;
-        const trimmed = raw.trim();
-        if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-        const clean = trimmed.split('?')[0].split('#')[0].replace(/\\\\/g, '/');
-        if (!clean) return null;
-
-        const baseParts = VFS.baseFile.split('/');
-        baseParts.pop();
-        const work = clean.startsWith('/') ? [] : baseParts;
-        const parts = clean.replace(/^\\/+/, '').split('/');
-        for (const p of parts) {
-          if (p === '.' || p === '') continue;
-          if (p === '..') { if (work.length > 0) work.pop(); }
-          else { work.push(p); }
-        }
-        const resolved = work.join('/');
-        if (mapObj[resolved]) return mapObj[resolved];
-
-        const lower = resolved.toLowerCase();
-        const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
-        if (key) return mapObj[key];
-
-        const baseName = lower.split('/').pop();
-        if (baseName) {
-          const fallbackKey = Object.keys(mapObj).find(k => k.toLowerCase().split('/').pop() === baseName);
-          if (fallbackKey) return mapObj[fallbackKey];
-        }
-
-        if (logMissing && /\\.(png|jpe?g|webp|gif|svg|ico|mp3|wav|ogg)$/i.test(clean) && !warnedMissing.has(clean)) {
-          warnedMissing.add(clean);
-          console.warn('VFS asset miss:', clean, '| available:', Object.keys(mapObj).slice(0, 8));
-        }
-        return null;
-      }
-
-      function resolveVfsPath(raw, logMissing = false) {
-        return resolveFromMap(raw, VFS.assets, logMissing);
-      }
-
-      function applyStyleBackgroundFix(el) {
-        if (!el || !el.style) return;
-        const bg = el.style.backgroundImage;
-        if (bg && bg.includes('url(')) {
-          const fixedBg = bg.replace(/url\\(\\s*(['"]?)([^'"()]+)\\1\\s*\\)/gi, (m, q, innerUrl) => {
-            const mapped = resolveVfsPath(innerUrl, true);
-            return mapped ? 'url("' + mapped + '")' : m;
-          });
-          if (fixedBg !== bg) {
-            el.style.backgroundImage = fixedBg;
-          }
-        }
-      }
-
-      const origFetch = window.fetch;
-      if (origFetch) {
-        window.fetch = function(input, init) {
-          if (typeof input === 'string') {
-            const mapped = resolveVfsPath(input, false);
-            if (mapped) input = mapped;
-          }
-          return origFetch.call(this, input, init);
-        };
-      }
-
-      const origXhrOpen = XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open = function(method, url) {
-        if (typeof url === 'string') {
-          const mapped = resolveVfsPath(url, false);
-          if (mapped) arguments[1] = mapped;
-        }
-        return origXhrOpen.apply(this, arguments);
-      };
-
-      const OrigAudio = window.Audio;
-      if (OrigAudio) {
-        window.Audio = function(src) {
-          const mapped = resolveVfsPath(src, true);
-          return new OrigAudio(mapped || src);
-        };
-        window.Audio.prototype = OrigAudio.prototype;
-      }
-
-      function hookSrcProperty(Proto) {
-        if (!Proto) return;
-        const desc = Object.getOwnPropertyDescriptor(Proto, 'src');
-        if (desc && desc.set) {
-          Object.defineProperty(Proto, 'src', {
-            get: desc.get,
-            set: function(val) {
-              const mapped = resolveVfsPath(val, true);
-              return desc.set.call(this, mapped || val);
-            },
-            configurable: true
-          });
-        }
-      }
-      hookSrcProperty(HTMLImageElement.prototype);
-      hookSrcProperty(HTMLMediaElement.prototype);
-      hookSrcProperty(HTMLScriptElement.prototype);
-      hookSrcProperty(HTMLSourceElement.prototype);
-
-      const origSetAttr = Element.prototype.setAttribute;
-      Element.prototype.setAttribute = function(name, val) {
-        if (typeof name === 'string' && typeof val === 'string') {
-          if (/^(src|poster)$/i.test(name)) {
-            const mapped = resolveVfsPath(val, true);
-            if (mapped) val = mapped;
-          } else if (/^href$/i.test(name)) {
-            if (val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-              const pageUrl = resolveFromMap(val, VFS.pages, false);
-              if (pageUrl) val = pageUrl;
-            } else {
-              const mapped = resolveVfsPath(val, false);
-              if (mapped) val = mapped;
-            }
-          } else if (/^style$/i.test(name) && /url\\s*\\(/i.test(val)) {
-            val = val.replace(/url\\(\\s*(['"]?)([^'"()]+)\\1\\s*\\)/gi, (m, q, innerUrl) => {
-              const mapped = resolveVfsPath(innerUrl, true);
-              return mapped ? 'url("' + mapped + '")' : m;
-            });
-          }
-        }
-        const res = origSetAttr.call(this, name, val);
-        if (typeof name === 'string' && /^style$/i.test(name)) {
-          applyStyleBackgroundFix(this);
-        }
-        return res;
-      };
-
-      if (window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype.drawImage) {
-        const origDrawImage = CanvasRenderingContext2D.prototype.drawImage;
-        CanvasRenderingContext2D.prototype.drawImage = function(img) {
-          if (img && img.tagName === 'IMG') {
-            const rawAttr = img.getAttribute && img.getAttribute('src');
-            if (rawAttr && !/^data:|^blob:|^https?:/i.test(rawAttr.trim())) {
-              const mapped = resolveVfsPath(rawAttr, true);
-              if (mapped && img.src !== mapped) {
-                img.src = mapped;
-              }
-            }
-          }
-          return origDrawImage.apply(this, arguments);
-        };
-      }
-
-      if (window.MutationObserver) {
-        const mo = new MutationObserver((mutations) => {
-          for (const mut of mutations) {
-            for (const node of mut.addedNodes || []) {
-              if (!node || node.nodeType !== 1) continue;
-              if (node.tagName === 'IMG') {
-                const rawSrc = node.getAttribute('src');
-                if (rawSrc && !/^data:|^blob:|^https?:/i.test(rawSrc.trim())) {
-                  const mapped = resolveVfsPath(rawSrc, true);
-                  if (mapped && node.src !== mapped) node.src = mapped;
-                }
-              }
-              applyStyleBackgroundFix(node);
-              const imgs = node.querySelectorAll ? node.querySelectorAll('img[src]') : [];
-              for (const childImg of imgs) {
-                const rawChildSrc = childImg.getAttribute('src');
-                if (rawChildSrc && !/^data:|^blob:|^https?:/i.test(rawChildSrc.trim())) {
-                  const mappedChild = resolveVfsPath(rawChildSrc, true);
-                  if (mappedChild && childImg.src !== mappedChild) childImg.src = mappedChild;
-                }
-              }
-            }
-          }
-        });
-        document.addEventListener('DOMContentLoaded', () => {
-          if (document.body) {
-            mo.observe(document.body, { childList: true, subtree: true });
-          }
-        });
-      }
-
-      const origWinOpen = window.open;
-      window.open = function(url, target, features) {
-        if (typeof url === 'string' && url.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-          if (!VFS.external && window.parent && window.parent !== window) {
-            window.parent.postMessage({ source: 'pikaedit-navigate', from: VFS.baseFile, to: url }, '*');
-            return null;
-          }
-          const pageUrl = resolveFromMap(url, VFS.pages, false);
-          if (pageUrl) url = pageUrl;
-        }
-        return origWinOpen.call(this, url, target, features);
-      };
-
-      document.addEventListener('click', function(e) {
-        const anchor = e.target.closest ? e.target.closest('a[href]') : null;
-        if (!anchor) return;
-        const href = anchor.getAttribute('href');
-        if (!href || /^(https?:|mailto:|tel:|#|javascript:|blob:)/i.test(href)) return;
-        if (href.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-          if (!VFS.external && window.parent && window.parent !== window) {
-            e.preventDefault();
-            window.parent.postMessage({
-              source: 'pikaedit-navigate',
-              from: VFS.baseFile,
-              to: href
-            }, '*');
-          } else if (VFS.external) {
-            const pageUrl = resolveFromMap(href, VFS.pages, false);
-            if (pageUrl) {
-              e.preventDefault();
-              window.location.href = pageUrl;
-            }
-          }
-        }
-      });
-
-      if (!VFS.external && window.parent && window.parent !== window) {
-        const send = (type, args) => {
-          try {
-            const formatted = Array.from(args).map(a => {
-              if (a instanceof Error) return a.name + ': ' + a.message;
-              if (typeof a === 'object' && a !== null) return JSON.stringify(a);
-              return String(a);
-            }).join(' ');
-            window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
-          } catch(e) {}
-        };
-        const origLog = console.log;
-        const origWarn = console.warn;
-        const origError = console.error;
-        console.log = function() { send('info', arguments); origLog.apply(console, arguments); };
-        console.warn = function() { send('warn', arguments); origWarn.apply(console, arguments); };
-        console.error = function() { send('error', arguments); origError.apply(console, arguments); };
-        window.onerror = function(msg, src, line) {
-          send('error', [msg + ' (Line ' + line + ')']);
-        };
-      }
-    })();
-  <\/script>`;
-
-  if (/<head[^>]*>/i.test(htmlContent)) {
-    htmlContent = htmlContent.replace(/<head[^>]*>/i, (match) => match + runtimeHook);
-  } else {
-    htmlContent = runtimeHook + htmlContent;
-  }
-
-  return htmlContent;
-}
-
-function buildAssetMap(bucket) {
-  const assetMap = {};
-  for (const [path, content] of Object.entries(files)) {
-    const lower = path.toLowerCase();
-    if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
-
-    if (isMediaOrImageFile(path)) {
-      assetMap[path] = toSafeDataUrl(content, path);
-    } else if (typeof content === "string" && content.startsWith("data:")) {
-      assetMap[path] = content;
-    } else {
-      assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
-    }
-  }
-
-  for (const [path, content] of Object.entries(files)) {
-    if (!path.toLowerCase().endsWith(".css")) continue;
-    const rewrittenCss = rewriteCssContent(content, path, assetMap);
-    assetMap[path] = createTrackedBlobUrl(rewrittenCss, "text/css", bucket);
-  }
-
-  return assetMap;
-}
-
-async function runProject(overrideHtmlFile = null) {
-  clearConsole();
-  revokePreviousBlobs();
-  togglePreviewDropdown(false);
-
-  const targetHtmlFile =
-    (overrideHtmlFile && files[overrideHtmlFile] !== undefined ? overrideHtmlFile : null) ||
-    findContextualHtml();
-
-  if (!targetHtmlFile) {
-    await showCozyPopup({
-      title: "No HTML File",
-      message: "Please create or select an .html file to run your project.",
-      icon: "📄",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
     });
-    return;
-  }
 
-  currentPreviewHtmlFile = targetHtmlFile;
-  previewTitle.textContent = targetHtmlFile;
+    // Synced Highlight Engine (Find & Replace + Visual Delete Range)
+    let activeHighlightMode = null;
+    let findMatches = [];
+    let findActiveIndex = -1;
+    let isReplaceAllMode = false;
 
-  const assetMap = buildAssetMap(activeBlobUrls);
-  const htmlContent = compileSingleHtmlDocument(targetHtmlFile, assetMap, null, false);
+    let rangeStartMatches = [];
+    let rangeStartIndex = -1;
+    let rangeEndMatches = [];
+    let rangeEndIndex = -1;
 
-  previewFrame.srcdoc = htmlContent;
-  previewModal.classList.remove("hidden");
-}
-
-async function openInDeviceBrowser() {
-  togglePreviewDropdown(false);
-
-  const targetHtmlFile =
-    (currentPreviewHtmlFile && files[currentPreviewHtmlFile] !== undefined ? currentPreviewHtmlFile : null) ||
-    findContextualHtml();
-
-  if (!targetHtmlFile) {
-    await showCozyPopup({
-      title: "No HTML File",
-      message: "Please create or select an .html file first.",
-      icon: "🌐",
-      tone: "warn",
-      mode: "alert",
-      confirmText: "OK"
-    });
-    return;
-  }
-
-  revokeBrowserTabBlobs();
-
-  const assetMap = buildAssetMap(browserTabBlobUrls);
-  const htmlPagesMap = {};
-  const allHtmlPaths = Object.keys(files).filter((p) => {
-    const l = p.toLowerCase();
-    return l.endsWith(".html") || l.endsWith(".htm");
-  });
-
-  for (const hPath of allHtmlPaths) {
-    const initialHtml = compileSingleHtmlDocument(hPath, assetMap, null, true);
-    htmlPagesMap[hPath] = createTrackedBlobUrl(initialHtml, "text/html", browserTabBlobUrls);
-  }
-
-  for (const hPath of allHtmlPaths) {
-    const linkedHtml = compileSingleHtmlDocument(hPath, assetMap, htmlPagesMap, true);
-    const oldUrl = htmlPagesMap[hPath];
-    htmlPagesMap[hPath] = createTrackedBlobUrl(linkedHtml, "text/html", browserTabBlobUrls);
-    try {
-      URL.revokeObjectURL(oldUrl);
-    } catch (e) {}
-  }
-
-  const entryUrl = htmlPagesMap[targetHtmlFile];
-  if (!entryUrl) return;
-
-  const link = document.createElement("a");
-  link.href = entryUrl;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  setTimeout(revokeBrowserTabBlobs, 180000);
-}
-
-openBrowserBtn.addEventListener("click", openInDeviceBrowser);
-
-runBtn.addEventListener("click", () => runProject());
-reloadPreviewBtn.addEventListener("click", () => runProject(currentPreviewHtmlFile));
-
-closePreviewBtn.addEventListener("click", () => {
-  togglePreviewDropdown(false);
-  exitAppFullscreen();
-  previewModal.classList.add("hidden");
-  previewFrame.srcdoc = "";
-  currentPreviewHtmlFile = null;
-  revokePreviousBlobs();
-});
-
-window.addEventListener("message", (event) => {
-  if (!event.data) return;
-  if (event.data.source === "pikaedit-console") {
-    appendConsoleLog(event.data.type, event.data.message);
-  } else if (event.data.source === "pikaedit-navigate") {
-    const targetPath = resolvePath(event.data.from, event.data.to);
-    if (targetPath && files[targetPath] !== undefined) {
-      runProject(targetPath);
-    } else {
-      appendConsoleLog("warn", `Page not found: ${event.data.to}`);
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
-  }
-});
 
-function appendConsoleLog(type, text) {
-  logCount++;
-  consoleBadge.textContent = logCount;
-  const div = document.createElement("div");
-  div.className = `log-line log-${type}`;
-  div.textContent = `> ${text}`;
-  consoleLogs.appendChild(div);
-  consoleLogs.scrollTop = consoleLogs.scrollHeight;
-}
+    function scrollEditorToIndex(charIndex) {
+      if (charIndex < 0 || codeEditor.classList.contains("hidden")) return;
+      const textBefore = codeEditor.value.slice(0, charIndex);
+      const lineNum = textBefore.split("\n").length - 1;
+      const targetScrollTop = Math.max(0, lineNum * 20.15 - codeEditor.clientHeight * 0.35);
+      codeEditor.scrollTop = targetScrollTop;
+      highlightBackdrop.scrollTop = targetScrollTop;
+      lineNumbers.scrollTop = targetScrollTop;
+    }
 
-function clearConsole() {
-  logCount = 0;
-  consoleBadge.textContent = "0";
-  consoleLogs.innerHTML = "";
-}
+    function renderHighlightedRanges(ranges) {
+      const text = codeEditor.value || "";
+      if (!ranges || ranges.length === 0) {
+        highlightBackdrop.textContent = text + "\n";
+        highlightBackdrop.scrollTop = codeEditor.scrollTop;
+        highlightBackdrop.scrollLeft = codeEditor.scrollLeft;
+        return;
+      }
 
-consoleToggleBtn.addEventListener("click", () => {
-  consolePanel.classList.toggle("hidden");
-});
+      const sorted = [...ranges].sort((a, b) => a.start - b.start);
+      let html = "";
+      let cursor = 0;
+      for (const r of sorted) {
+        if (r.start < cursor) continue;
+        html += escapeHtml(text.slice(cursor, r.start));
+        html += `<mark class="${r.cls}">${escapeHtml(text.slice(r.start, r.end))}</mark>`;
+        cursor = r.end;
+      }
+      html += escapeHtml(text.slice(cursor)) + "\n";
+      highlightBackdrop.innerHTML = html;
+      highlightBackdrop.scrollTop = codeEditor.scrollTop;
+      highlightBackdrop.scrollLeft = codeEditor.scrollLeft;
+    }
 
-clearConsoleBtn.addEventListener("click", clearConsole);
+    function refreshEditorHighlights() {
+      if (activeHighlightMode === "find") {
+        const q = findInput.value;
+        const ranges = findMatches.map((pos, idx) => ({
+          start: pos,
+          end: pos + q.length,
+          cls: idx === findActiveIndex ? "hl-active" : "hl-match"
+        }));
+        renderHighlightedRanges(ranges);
+      } else if (activeHighlightMode === "range") {
+        const ranges = [];
+        const sQ = rangeStartInput.value;
+        const eQ = rangeEndInput.value;
+        rangeStartMatches.forEach((pos, idx) => {
+          ranges.push({ start: pos, end: pos + sQ.length, cls: idx === rangeStartIndex ? "hl-range-start" : "hl-match" });
+        });
+        rangeEndMatches.forEach((pos, idx) => {
+          ranges.push({ start: pos, end: pos + eQ.length, cls: idx === rangeEndIndex ? "hl-range-end" : "hl-match" });
+        });
+        if (rangeStartIndex >= 0 && rangeEndIndex >= 0) {
+          const spanStart = rangeStartMatches[rangeStartIndex] + sQ.length;
+          const spanEnd = rangeEndMatches[rangeEndIndex];
+          if (spanEnd > spanStart) {
+            ranges.push({ start: spanStart, end: spanEnd, cls: "hl-range-span" });
+          }
+        }
+        renderHighlightedRanges(ranges);
+      } else {
+        renderHighlightedRanges([]);
+      }
+    }
 
-// Mobile Drawer Controls
-function closeMobileSidebar() {
-  sidebar.classList.remove("open");
-  sidebarBackdrop.classList.remove("show");
-}
+    function openFindBar() {
+      closeRangeBar();
+      toggleWaDropdown(false);
+      activeHighlightMode = "find";
+      findBar.classList.remove("hidden");
+      findInput.focus();
+      updateFindMatches(true);
+    }
 
-menuBtn.addEventListener("click", () => {
-  sidebar.classList.toggle("open");
-  sidebarBackdrop.classList.toggle("show");
-});
+    function closeFindBar() {
+      findBar.classList.add("hidden");
+      replaceRow.classList.add("hidden");
+      findMatches = [];
+      findActiveIndex = -1;
+      if (activeHighlightMode === "find") activeHighlightMode = null;
+      refreshEditorHighlights();
+    }
 
-sidebarBackdrop.addEventListener("click", closeMobileSidebar);
+    function updateFindMatches(resetIdx = true) {
+      const query = findInput.value;
+      const text = codeEditor.value;
+      findMatches = [];
+      if (query) {
+        const lowerText = text.toLowerCase();
+        const lowerQ = query.toLowerCase();
+        let pos = 0;
+        while ((pos = lowerText.indexOf(lowerQ, pos)) !== -1) {
+          findMatches.push(pos);
+          pos += Math.max(1, lowerQ.length);
+        }
+      }
+      if (findMatches.length === 0) {
+        findActiveIndex = -1;
+        findCount.textContent = "0/0";
+        refreshEditorHighlights();
+        return;
+      }
+      if (resetIdx || findActiveIndex < 0 || findActiveIndex >= findMatches.length) findActiveIndex = 0;
+      findCount.textContent = `${findActiveIndex + 1}/${findMatches.length}`;
+      refreshEditorHighlights();
+      scrollEditorToIndex(findMatches[findActiveIndex]);
+    }
 
-// =========================================================================
-// BOOTSTRAP WORKSPACE FROM INDEXEDDB
-// =========================================================================
-(async function initWorkspace() {
-  const [savedWorkspaces, savedSlotIdx, savedFiles, savedFolders, savedActive] = await Promise.all([
-    idbGet("workspaces_v1"),
-    idbGet("currentSlotIndex_v1"),
-    idbGet("files"),
-    idbGet("folders"),
-    idbGet("activeFile")
-  ]);
+    function stepFindMatch(delta) {
+      if (findMatches.length === 0) return;
+      findActiveIndex = (findActiveIndex + delta + findMatches.length) % findMatches.length;
+      findCount.textContent = `${findActiveIndex + 1}/${findMatches.length}`;
+      refreshEditorHighlights();
+      scrollEditorToIndex(findMatches[findActiveIndex]);
+    }
 
-  if (Array.isArray(savedWorkspaces) && savedWorkspaces.length > 0) {
-    workspaces = savedWorkspaces;
-    currentSlotIndex =
-      typeof savedSlotIdx === "number" && savedSlotIdx >= 0 && savedSlotIdx < workspaces.length
-        ? savedSlotIdx
+    menuFindBtn.addEventListener("click", openFindBar);
+    closeFindBtn.addEventListener("click", closeFindBar);
+    findInput.addEventListener("input", () => updateFindMatches(true));
+    findPrevBtn.addEventListener("click", (e) => { e.preventDefault(); stepFindMatch(-1); });
+    findNextBtn.addEventListener("click", (e) => { e.preventDefault(); stepFindMatch(1); });
+
+    replaceAllToggleBtn.addEventListener("click", () => {
+      isReplaceAllMode = !isReplaceAllMode;
+      replaceAllToggleBtn.classList.toggle("active", isReplaceAllMode);
+    });
+
+    toggleReplaceRowBtn.addEventListener("click", () => {
+      const wasHidden = replaceRow.classList.toggle("hidden");
+      if (!wasHidden) replaceInput.focus();
+    });
+
+    executeReplaceBtn.addEventListener("click", () => {
+      const query = findInput.value;
+      const replacement = replaceInput.value;
+      if (!query || findMatches.length === 0) return;
+      const text = codeEditor.value;
+      recordUndoSnapshot(activeFile, text);
+
+      let updated = text;
+      if (isReplaceAllMode) {
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        updated = text.replace(new RegExp(escaped, "gi"), replacement);
+      } else if (findActiveIndex >= 0 && findActiveIndex < findMatches.length) {
+        const pos = findMatches[findActiveIndex];
+        updated = text.slice(0, pos) + replacement + text.slice(pos + query.length);
+      }
+      codeEditor.value = updated;
+      files[activeFile] = updated;
+      recordUndoSnapshot(activeFile, updated);
+      saveWorkspace();
+      updateLineNumbers(true);
+      updateFindMatches(false);
+    });
+
+    // Visual Delete Range Handlers
+    function openRangeBar() {
+      closeFindBar();
+      toggleWaDropdown(false);
+      activeHighlightMode = "range";
+      rangeBar.classList.remove("hidden");
+      rangeEndRow.classList.add("hidden");
+      rangeStartInput.value = "";
+      rangeEndInput.value = "";
+      rangeStartMatches = [];
+      rangeStartIndex = -1;
+      rangeEndMatches = [];
+      rangeEndIndex = -1;
+      rangeStartCount.textContent = "0/0";
+      rangeEndCount.textContent = "0/0";
+      refreshEditorHighlights();
+      rangeStartInput.focus();
+    }
+
+    function closeRangeBar() {
+      rangeBar.classList.add("hidden");
+      rangeEndRow.classList.add("hidden");
+      rangeStartMatches = [];
+      rangeEndMatches = [];
+      if (activeHighlightMode === "range") activeHighlightMode = null;
+      refreshEditorHighlights();
+    }
+
+    function updateRangeStartMatches(resetIdx = true) {
+      const q = rangeStartInput.value;
+      const text = codeEditor.value;
+      rangeStartMatches = [];
+      if (q) {
+        let pos = 0;
+        while ((pos = text.indexOf(q, pos)) !== -1) {
+          rangeStartMatches.push(pos);
+          pos += Math.max(1, q.length);
+        }
+      }
+      if (rangeStartMatches.length === 0) {
+        rangeStartIndex = -1;
+        rangeStartCount.textContent = "0/0";
+      } else {
+        if (resetIdx || rangeStartIndex < 0 || rangeStartIndex >= rangeStartMatches.length) rangeStartIndex = 0;
+        rangeStartCount.textContent = `${rangeStartIndex + 1}/${rangeStartMatches.length}`;
+        scrollEditorToIndex(rangeStartMatches[rangeStartIndex]);
+      }
+      updateRangeEndMatches(true);
+    }
+
+    function updateRangeEndMatches(resetIdx = true) {
+      const endQ = rangeEndInput.value;
+      const startQ = rangeStartInput.value;
+      const text = codeEditor.value;
+      rangeEndMatches = [];
+      const searchAfter = rangeStartIndex >= 0 && rangeStartIndex < rangeStartMatches.length
+        ? rangeStartMatches[rangeStartIndex] + startQ.length
         : 0;
-    const slot = workspaces[currentSlotIndex];
-    files = slot.files && Object.keys(slot.files).length > 0 ? slot.files : { "index.html": "" };
-    emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
-    expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
-    activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
-  } else {
-    if (savedFiles && typeof savedFiles === "object" && Object.keys(savedFiles).length > 0) {
-      files = savedFiles;
-    } else {
-      try {
-        const legacyFolders = window.localStorage.getItem(FOLDERS_KEY);
-        if (legacyFolders) emptyFolders = JSON.parse(legacyFolders);
-      } catch (e) {}
-    }
-
-    if (Array.isArray(savedFolders)) {
-      emptyFolders = savedFolders;
-    }
-
-    if (savedActive && savedActive in files) {
-      activeFile = savedActive;
-    } else {
-      activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
-    }
-
-    workspaces = [
-      {
-        files,
-        emptyFolders,
-        expandedFolders: Array.from(expandedFolders),
-        activeFile
+      if (endQ) {
+        let pos = searchAfter;
+        while ((pos = text.indexOf(endQ, pos)) !== -1) {
+          rangeEndMatches.push(pos);
+          pos += Math.max(1, endQ.length);
+        }
       }
-    ];
-    currentSlotIndex = 0;
-    await persistNow();
-  }
+      if (rangeEndMatches.length === 0) {
+        rangeEndIndex = -1;
+        rangeEndCount.textContent = "0/0";
+      } else {
+        if (resetIdx || rangeEndIndex < 0 || rangeEndIndex >= rangeEndMatches.length) rangeEndIndex = 0;
+        rangeEndCount.textContent = `${rangeEndIndex + 1}/${rangeEndMatches.length}`;
+        if (!rangeEndRow.classList.contains("hidden")) {
+          scrollEditorToIndex(rangeEndMatches[rangeEndIndex]);
+        }
+      }
+      refreshEditorHighlights();
+    }
 
-  updateSlotBarUI();
-  openFile(activeFile, { syncTree: true, persist: false });
-})();
+    menuDeleteRangeBtn.addEventListener("click", openRangeBar);
+    closeRangeBtn.addEventListener("click", closeRangeBar);
+
+    rangeStartInput.addEventListener("input", () => updateRangeStartMatches(true));
+    rangeStartPrevBtn.addEventListener("click", () => {
+      if (rangeStartMatches.length === 0) return;
+      rangeStartIndex = (rangeStartIndex - 1 + rangeStartMatches.length) % rangeStartMatches.length;
+      rangeStartCount.textContent = `${rangeStartIndex + 1}/${rangeStartMatches.length}`;
+      scrollEditorToIndex(rangeStartMatches[rangeStartIndex]);
+      updateRangeEndMatches(true);
+    });
+    rangeStartNextBtn.addEventListener("click", () => {
+      if (rangeStartMatches.length === 0) return;
+      rangeStartIndex = (rangeStartIndex + 1) % rangeStartMatches.length;
+      rangeStartCount.textContent = `${rangeStartIndex + 1}/${rangeStartMatches.length}`;
+      scrollEditorToIndex(rangeStartMatches[rangeStartIndex]);
+      updateRangeEndMatches(true);
+    });
+
+    rangeNextStepBtn.addEventListener("click", () => {
+      rangeEndRow.classList.remove("hidden");
+      rangeEndInput.focus();
+      updateRangeEndMatches(true);
+    });
+
+    rangeEndInput.addEventListener("input", () => updateRangeEndMatches(true));
+    rangeEndPrevBtn.addEventListener("click", () => {
+      if (rangeEndMatches.length === 0) return;
+      rangeEndIndex = (rangeEndIndex - 1 + rangeEndMatches.length) % rangeEndMatches.length;
+      rangeEndCount.textContent = `${rangeEndIndex + 1}/${rangeEndMatches.length}`;
+      scrollEditorToIndex(rangeEndMatches[rangeEndIndex]);
+      refreshEditorHighlights();
+    });
+    rangeEndNextBtn.addEventListener("click", () => {
+      if (rangeEndMatches.length === 0) return;
+      rangeEndIndex = (rangeEndIndex + 1) % rangeEndMatches.length;
+      rangeEndCount.textContent = `${rangeEndIndex + 1}/${rangeEndMatches.length}`;
+      scrollEditorToIndex(rangeEndMatches[rangeEndIndex]);
+      refreshEditorHighlights();
+    });
+
+    executeRangeDeleteBtn.addEventListener("click", async () => {
+      const startQ = rangeStartInput.value;
+      const endQ = rangeEndInput.value;
+      if (!startQ || rangeStartIndex < 0 || !endQ || rangeEndIndex < 0) {
+        await showCozyPopup({
+          title: "Select Start & End",
+          message: "Please enter valid start and end text matches before deleting.",
+          icon: "✂️",
+          tone: "warn",
+          mode: "alert",
+          confirmText: "OK"
+        });
+        return;
+      }
+      const startPos = rangeStartMatches[rangeStartIndex];
+      const endPos = rangeEndMatches[rangeEndIndex] + endQ.length;
+      if (endPos <= startPos) return;
+
+      const text = codeEditor.value;
+      recordUndoSnapshot(activeFile, text);
+      const updated = text.slice(0, startPos) + text.slice(endPos);
+      codeEditor.value = updated;
+      files[activeFile] = updated;
+      recordUndoSnapshot(activeFile, updated);
+      saveWorkspace();
+      updateLineNumbers(true);
+      closeRangeBar();
+    });
+
+    // Cozy Dialogs
+    function showCozyPopup({
+      title = "Notice",
+      message = "",
+      icon = "✨",
+      tone = "info",
+      mode = "alert",
+      placeholder = "",
+      defaultValue = "",
+      confirmText = "OK",
+      cancelText = "Cancel"
+    }) {
+      return new Promise((resolve) => {
+        cozyTitle.textContent = title;
+        cozyMessage.textContent = message;
+        cozyIcon.textContent = icon;
+        cozyIcon.className = `cozy-icon ${tone}`;
+        cozyConfirmBtn.textContent = confirmText;
+        cozyConfirmBtn.className = `cozy-btn confirm ${tone === "danger" ? "danger" : ""}`;
+        cozyCancelBtn.textContent = cancelText;
+        cozyCancelBtn.classList.toggle("hidden", mode === "alert");
+
+        if (mode === "prompt") {
+          cozyInput.classList.remove("hidden");
+          cozyInput.value = defaultValue;
+          cozyInput.placeholder = placeholder;
+        } else {
+          cozyInput.classList.add("hidden");
+        }
+
+        cozyModalOverlay.classList.remove("hidden");
+        if (mode === "prompt") {
+          setTimeout(() => {
+            cozyInput.focus();
+            cozyInput.setSelectionRange(cozyInput.value.length, cozyInput.value.length);
+          }, 30);
+        } else {
+          setTimeout(() => cozyConfirmBtn.focus(), 30);
+        }
+
+        const cleanup = (result) => {
+          cozyModalOverlay.classList.add("hidden");
+          cozyConfirmBtn.onclick = null;
+          cozyCancelBtn.onclick = null;
+          cozyModalOverlay.onclick = null;
+          cozyInput.onkeydown = null;
+          resolve(result);
+        };
+
+        cozyConfirmBtn.onclick = () => cleanup(mode === "prompt" ? cozyInput.value : true);
+        cozyCancelBtn.onclick = () => cleanup(mode === "prompt" ? null : false);
+        cozyModalOverlay.onclick = (e) => { if (e.target === cozyModalOverlay) cleanup(mode === "prompt" ? null : false); };
+        cozyInput.onkeydown = (e) => {
+          if (e.key === "Enter") { e.preventDefault(); cleanup(cozyInput.value); }
+          else if (e.key === "Escape") { e.preventDefault(); cleanup(null); }
+        };
+      });
+    }
+
+    let jszipLoadPromise = null;
+    async function ensureJSZip() {
+      if (typeof window.JSZip !== "undefined") return true;
+      if (!jszipLoadPromise) {
+        jszipLoadPromise = new Promise((resolve) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+          s.async = true;
+          s.onload = () => resolve(typeof window.JSZip !== "undefined");
+          s.onerror = () => { jszipLoadPromise = null; resolve(false); };
+          document.head.appendChild(s);
+        });
+      }
+      return await jszipLoadPromise;
+    }
+
+    // Explorer Tree, Swipe Gestures & Long-Press Menu
+    function renderQuickTabs() {
+      fileTabsBar.innerHTML = "";
+      const priority = ["index.html", "style.css", "script.js"];
+      const allPaths = Object.keys(files).sort((a, b) => {
+        const baseA = a.split("/").pop();
+        const baseB = b.split("/").pop();
+        const idxA = priority.indexOf(baseA);
+        const idxB = priority.indexOf(baseB);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b);
+      });
+
+      for (const path of allPaths.slice(0, 14)) {
+        const baseName = path.split("/").pop();
+        const pill = document.createElement("button");
+        pill.type = "button";
+        pill.className = `file-tab-pill ${path === activeFile ? "active" : ""}`;
+        pill.innerHTML = `<span>${getFileIcon(baseName)}</span><span>${baseName}</span>`;
+        pill.title = path;
+        pill.onclick = () => openFile(path);
+        fileTabsBar.appendChild(pill);
+      }
+    }
+
+    function expandParentsOf(filePath) {
+      if (!filePath || !filePath.includes("/")) return;
+      const parts = filePath.split("/");
+      parts.pop();
+      let acc = "";
+      for (const part of parts) {
+        acc = acc ? `${acc}/${part}` : part;
+        expandedFolders.add(acc);
+      }
+    }
+
+    function findEntryHtml(preferredFolder = "") {
+      const keys = Object.keys(files);
+      if (preferredFolder) {
+        const prefix = preferredFolder + "/";
+        const folderKeys = keys.filter((k) => k.startsWith(prefix));
+        const exactIndex = folderKeys.find((k) => k.toLowerCase() === `${prefix}index.html`.toLowerCase());
+        if (exactIndex) return exactIndex;
+        const anyFolderHtml = folderKeys.find((k) => k.toLowerCase().endsWith(".html"));
+        if (anyFolderHtml) return anyFolderHtml;
+      }
+      const rootIndex = keys.find((k) => k.toLowerCase() === "index.html");
+      if (rootIndex) return rootIndex;
+      const nestedIndex = keys.find((k) => k.toLowerCase().endsWith("/index.html"));
+      if (nestedIndex) return nestedIndex;
+      return keys.find((k) => k.toLowerCase().endsWith(".html")) || null;
+    }
+
+    function getFileIcon(fileName) {
+      const lower = fileName.toLowerCase();
+      if (lower.endsWith(".html") || lower.endsWith(".htm")) return "🌐";
+      if (lower.endsWith(".css")) return "🎨";
+      if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "⚡";
+      if (lower.endsWith(".json")) return "📋";
+      if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"].some((ext) => lower.endsWith(ext))) return "🖼️";
+      if ([".mp3", ".wav", ".ogg", ".m4a", ".aac"].some((ext) => lower.endsWith(ext))) return "🎵";
+      return "📄";
+    }
+
+    function buildTreeStructure() {
+      const root = { folders: {}, files: [] };
+      for (const folderPath of emptyFolders) {
+        const parts = folderPath.split("/").filter(Boolean);
+        let node = root;
+        let currentPath = "";
+        for (const part of parts) {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          if (!node.folders[part]) node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
+          node = node.folders[part];
+        }
+      }
+      for (const filePath of Object.keys(files)) {
+        const parts = filePath.split("/").filter(Boolean);
+        const fileName = parts.pop();
+        let node = root;
+        let currentPath = "";
+        for (const part of parts) {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          if (!node.folders[part]) node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
+          node = node.folders[part];
+        }
+        node.files.push({ name: fileName, path: filePath });
+      }
+      return root;
+    }
+
+    function enterMultiSelectMode(initialPath = null) {
+      isMultiSelectMode = true;
+      selectedPaths.clear();
+      if (initialPath) selectedPaths.add(initialPath);
+      updateMultiSelectUI();
+      renderFileTree();
+    }
+
+    function exitMultiSelectMode() {
+      isMultiSelectMode = false;
+      selectedPaths.clear();
+      multiSelectBar.classList.add("hidden");
+      renderFileTree();
+    }
+
+    function updateMultiSelectUI() {
+      multiSelectBar.classList.toggle("hidden", !isMultiSelectMode);
+      multiSelectCount.textContent = `${selectedPaths.size} selected`;
+    }
+
+    cancelMultiSelectBtn.addEventListener("click", exitMultiSelectMode);
+
+    deleteSelectedBtn.addEventListener("click", async () => {
+      if (selectedPaths.size === 0) return;
+      for (const p of selectedPaths) {
+        if (p in files) {
+          delete files[p];
+        } else {
+          const prefix = p + "/";
+          for (const k of Object.keys(files)) {
+            if (k.startsWith(prefix)) delete files[k];
+          }
+          emptyFolders = emptyFolders.filter((f) => f !== p && !f.startsWith(prefix));
+        }
+      }
+      if (Object.keys(files).length === 0) files["index.html"] = "";
+      if (!(activeFile in files)) activeFile = findEntryHtml() || Object.keys(files)[0];
+      exitMultiSelectMode();
+      await persistNow();
+      openFile(activeFile);
+    });
+
+    let longPressTimer = null;
+    let longPressTargetPath = null;
+
+    function showFileAreaContextMenu(x, y, targetPath = null) {
+      longPressTargetPath = targetPath;
+      const clampedX = Math.min(Math.max(10, x), window.innerWidth - 190);
+      const clampedY = Math.min(Math.max(50, y), window.innerHeight - 142);
+      fileAreaContextMenu.style.left = `${clampedX}px`;
+      fileAreaContextMenu.style.top = `${clampedY}px`;
+      fileAreaContextMenu.classList.remove("hidden");
+    }
+
+    function hideFileAreaContextMenu() {
+      fileAreaContextMenu.classList.add("hidden");
+    }
+
+    ctxSelectFilesBtn.addEventListener("click", () => {
+      hideFileAreaContextMenu();
+      enterMultiSelectMode(longPressTargetPath);
+    });
+
+    ctxDeleteSectionBtn.addEventListener("click", async () => {
+      hideFileAreaContextMenu();
+      await deleteCurrentSection();
+    });
+
+    ctxCancelBtn.addEventListener("click", hideFileAreaContextMenu);
+
+    let treeGestureState = null;
+
+    fileTreeEl.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const row = e.target.closest(".tree-row");
+      const targetPath = row ? row.getAttribute("data-swipe-path") : null;
+
+      treeGestureState = {
+        startX: t.clientX,
+        startY: t.clientY,
+        lastX: t.clientX,
+        lastY: t.clientY,
+        row,
+        lockedAxis: null,
+        longPressed: false
+      };
+
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        if (treeGestureState && !treeGestureState.lockedAxis) {
+          treeGestureState.longPressed = true;
+          showFileAreaContextMenu(t.clientX, t.clientY, targetPath);
+        }
+      }, 480);
+    }, { passive: true });
+
+    fileTreeEl.addEventListener("touchmove", (e) => {
+      if (!treeGestureState || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const dx = t.clientX - treeGestureState.startX;
+      const dy = t.clientY - treeGestureState.startY;
+      treeGestureState.lastX = t.clientX;
+      treeGestureState.lastY = t.clientY;
+
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) clearTimeout(longPressTimer);
+
+      if (!treeGestureState.lockedAxis) {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        treeGestureState.lockedAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+
+      if (treeGestureState.lockedAxis !== "x" || treeGestureState.longPressed) return;
+
+      if (dx > 0 && treeGestureState.row) {
+        const clamped = Math.min(dx, 110);
+        treeGestureState.row.style.transition = "none";
+        treeGestureState.row.style.transform = `translateX(${clamped}px)`;
+        treeGestureState.row.classList.add("swipe-deleting");
+      } else if (dx < 0) {
+        const clamped = Math.max(dx * 0.35, -36);
+        fileTreeEl.style.transition = "none";
+        fileTreeEl.style.transform = `translateX(${clamped}px)`;
+      }
+    }, { passive: true });
+
+    fileTreeEl.addEventListener("touchend", async () => {
+      clearTimeout(longPressTimer);
+      if (!treeGestureState) return;
+      const state = treeGestureState;
+      treeGestureState = null;
+
+      const dx = state.lastX - state.startX;
+      const dy = state.lastY - state.startY;
+
+      if (state.row) {
+        state.row.style.transition = "transform 0.16s ease";
+        state.row.style.transform = "";
+        state.row.classList.remove("swipe-deleting");
+      }
+      fileTreeEl.style.transition = "transform 0.16s ease";
+      fileTreeEl.style.transform = "";
+
+      if (state.longPressed) return;
+      if (state.lockedAxis !== "x" || Math.abs(dx) < 62 || Math.abs(dx) < Math.abs(dy)) return;
+
+      const blockClickOnce = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      fileTreeEl.addEventListener("click", blockClickOnce, { capture: true, once: true });
+      setTimeout(() => fileTreeEl.removeEventListener("click", blockClickOnce, { capture: true }), 80);
+
+      if (dx > 62 && state.row) {
+        const deleteType = state.row.getAttribute("data-swipe-type");
+        const deletePath = state.row.getAttribute("data-swipe-path");
+        if (deleteType === "file" && deletePath) await deleteFileInstant(deletePath);
+        else if (deleteType === "folder" && deletePath) await deleteFolderInstant(deletePath);
+      } else if (dx < -62) {
+        await switchWorkspaceSlot(currentSlotIndex + 1, true);
+      }
+    });
+
+    function renderTreeNodes(node, depth = 0) {
+      const fragment = document.createDocumentFragment();
+      const folderNames = Object.keys(node.folders).sort((a, b) => a.localeCompare(b));
+      for (const fName of folderNames) {
+        const folder = node.folders[fName];
+        const isExpanded = expandedFolders.has(folder.path);
+
+        const row = document.createElement("div");
+        row.className = "tree-row folder-row";
+        row.style.paddingLeft = `${8 + depth * 14}px`;
+        row.setAttribute("data-swipe-type", "folder");
+        row.setAttribute("data-swipe-path", folder.path);
+
+        const left = document.createElement("div");
+        left.className = "tree-left";
+
+        if (isMultiSelectMode) {
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.className = "file-select-checkbox";
+          cb.checked = selectedPaths.has(folder.path);
+          cb.onclick = (e) => {
+            e.stopPropagation();
+            if (cb.checked) selectedPaths.add(folder.path);
+            else selectedPaths.delete(folder.path);
+            updateMultiSelectUI();
+          };
+          left.appendChild(cb);
+        }
+
+        const infoSpan = document.createElement("span");
+        infoSpan.style.display = "contents";
+        infoSpan.innerHTML = `
+          <span class="tree-caret">${isExpanded ? "▾" : "▸"}</span>
+          <span class="tree-icon">${isExpanded ? "📂" : "📁"}</span>
+          <span class="file-name">${folder.name}</span>
+        `;
+        left.appendChild(infoSpan);
+
+        const addInsideBtn = document.createElement("button");
+        addInsideBtn.className = "row-mini-btn plus-btn";
+        addInsideBtn.textContent = "+";
+        addInsideBtn.onclick = (e) => { e.stopPropagation(); openFolderActionSheet(folder.path); };
+
+        row.appendChild(left);
+        row.appendChild(addInsideBtn);
+
+        row.onclick = () => {
+          if (isMultiSelectMode) {
+            if (selectedPaths.has(folder.path)) selectedPaths.delete(folder.path);
+            else selectedPaths.add(folder.path);
+            updateMultiSelectUI();
+            renderFileTree();
+            return;
+          }
+          if (expandedFolders.has(folder.path)) expandedFolders.delete(folder.path);
+          else expandedFolders.add(folder.path);
+          renderFileTree();
+        };
+
+        fragment.appendChild(row);
+        if (isExpanded) fragment.appendChild(renderTreeNodes(folder, depth + 1));
+      }
+
+      const priority = ["index.html", "style.css", "script.js"];
+      const sortedFiles = [...node.files].sort((a, b) => {
+        const idxA = priority.indexOf(a.name);
+        const idxB = priority.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      for (const fileObj of sortedFiles) {
+        const row = document.createElement("div");
+        row.className = `tree-row ${fileObj.path === activeFile ? "active" : ""}`;
+        row.style.paddingLeft = `${14 + depth * 14}px`;
+        row.setAttribute("data-swipe-type", "file");
+        row.setAttribute("data-swipe-path", fileObj.path);
+
+        const left = document.createElement("div");
+        left.className = "tree-left";
+
+        if (isMultiSelectMode) {
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.className = "file-select-checkbox";
+          cb.checked = selectedPaths.has(fileObj.path);
+          cb.onclick = (e) => {
+            e.stopPropagation();
+            if (cb.checked) selectedPaths.add(fileObj.path);
+            else selectedPaths.delete(fileObj.path);
+            updateMultiSelectUI();
+          };
+          left.appendChild(cb);
+        }
+
+        const labelSpan = document.createElement("span");
+        labelSpan.style.display = "contents";
+        labelSpan.innerHTML = `
+          <span class="tree-icon">${getFileIcon(fileObj.name)}</span>
+          <span class="file-name">${fileObj.name}</span>
+        `;
+        left.appendChild(labelSpan);
+        row.appendChild(left);
+
+        row.onclick = () => {
+          if (isMultiSelectMode) {
+            if (selectedPaths.has(fileObj.path)) selectedPaths.delete(fileObj.path);
+            else selectedPaths.add(fileObj.path);
+            updateMultiSelectUI();
+            renderFileTree();
+            return;
+          }
+          openFile(fileObj.path);
+          closeMobileSidebar();
+        };
+
+        fragment.appendChild(row);
+      }
+
+      return fragment;
+    }
+
+    function renderFileTree() {
+      fileTreeEl.innerHTML = "";
+      const tree = buildTreeStructure();
+      fileTreeEl.appendChild(renderTreeNodes(tree, 0));
+      renderQuickTabs();
+      updateSlotBarUI();
+    }
+
+    // Folder Sheet & File Operations
+    function openFolderActionSheet(folderPath) {
+      sheetTargetFolder = folderPath;
+      sheetFolderTitle.textContent = folderPath;
+      folderSheetOverlay.classList.remove("hidden");
+    }
+
+    function closeFolderActionSheet() { folderSheetOverlay.classList.add("hidden"); }
+    closeSheetBtn.addEventListener("click", closeFolderActionSheet);
+    folderSheetOverlay.addEventListener("click", (e) => { if (e.target === folderSheetOverlay) closeFolderActionSheet(); });
+
+    sheetNewFileBtn.addEventListener("click", () => { const f = sheetTargetFolder; closeFolderActionSheet(); promptCreateFile(`${f}/`); });
+    sheetNewFolderBtn.addEventListener("click", () => { const f = sheetTargetFolder; closeFolderActionSheet(); promptCreateFolder(`${f}/`); });
+    sheetImportZipBtn.addEventListener("click", () => { pendingUploadFolder = sheetTargetFolder; closeFolderActionSheet(); zipInput.click(); });
+    sheetUploadFilesBtn.addEventListener("click", () => { pendingUploadFolder = sheetTargetFolder; closeFolderActionSheet(); assetUploadInput.click(); });
+
+    sheetExportZipBtn.addEventListener("click", async () => {
+      if (!(await ensureJSZip())) return;
+      const folder = sheetTargetFolder;
+      closeFolderActionSheet();
+      const prefix = folder + "/";
+      const entries = Object.entries(files).filter(([p]) => p.startsWith(prefix));
+      if (entries.length === 0) return;
+      const zip = new JSZip();
+      for (const [path, content] of entries) {
+        const rel = path.slice(prefix.length);
+        if (typeof content === "string" && content.startsWith("data:")) zip.file(rel, content.split(",")[1], { base64: true });
+        else zip.file(rel, content);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${folder.split("/").pop() || "folder"}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    sheetRenameFolderBtn.addEventListener("click", async () => {
+      const oldFolder = sheetTargetFolder;
+      closeFolderActionSheet();
+      const newName = await showCozyPopup({
+        title: "Rename Folder",
+        message: "Enter new folder path or name:",
+        icon: "✏️",
+        mode: "prompt",
+        defaultValue: oldFolder,
+        confirmText: "Rename"
+      });
+      if (!newName) return;
+      const cleanNew = newName.trim().replace(/^\/+|\/+$/g, "").replace(/\/+/g, "/");
+      if (!cleanNew || cleanNew === oldFolder) return;
+      const oldPrefix = oldFolder + "/";
+      const newPrefix = cleanNew + "/";
+      const updatedFiles = {};
+      for (const [path, content] of Object.entries(files)) {
+        updatedFiles[path.startsWith(oldPrefix) ? newPrefix + path.slice(oldPrefix.length) : path] = content;
+      }
+      files = updatedFiles;
+      emptyFolders = emptyFolders.map((f) => (f === oldFolder ? cleanNew : f.startsWith(oldPrefix) ? newPrefix + f.slice(oldPrefix.length) : f));
+      if (activeFile.startsWith(oldPrefix)) activeFile = newPrefix + activeFile.slice(oldPrefix.length);
+      expandedFolders.delete(oldFolder);
+      expandedFolders.add(cleanNew);
+      await persistNow();
+      openFile(activeFile);
+    });
+
+    function openFile(fileName, { syncTree = true, persist = true } = {}) {
+      if (!(fileName in files)) return;
+      activeFile = fileName;
+      expandParentsOf(fileName);
+
+      const content = files[fileName];
+      assetAudio.pause();
+      assetAudio.src = "";
+      const isWrapped = codeEditor.classList.contains("word-wrap");
+
+      if (typeof content === "string" && content.startsWith("data:image/")) {
+        codeEditor.classList.add("hidden");
+        highlightBackdrop.classList.add("hidden");
+        lineNumbers.classList.add("hidden");
+        assetPreviewBox.classList.remove("hidden");
+        assetImage.classList.remove("hidden");
+        assetAudio.classList.add("hidden");
+        assetImage.src = content;
+        assetInfo.textContent = `Image Asset: ${fileName}`;
+      } else if (typeof content === "string" && content.startsWith("data:audio/")) {
+        codeEditor.classList.add("hidden");
+        highlightBackdrop.classList.add("hidden");
+        lineNumbers.classList.add("hidden");
+        assetPreviewBox.classList.remove("hidden");
+        assetImage.classList.add("hidden");
+        assetAudio.classList.remove("hidden");
+        assetAudio.src = content;
+        assetInfo.textContent = `Audio Asset: ${fileName}`;
+      } else if (typeof content === "string" && content.startsWith("data:")) {
+        codeEditor.classList.add("hidden");
+        highlightBackdrop.classList.add("hidden");
+        lineNumbers.classList.add("hidden");
+        assetPreviewBox.classList.remove("hidden");
+        assetImage.classList.add("hidden");
+        assetAudio.classList.add("hidden");
+        assetInfo.textContent = `Binary Asset: ${fileName}`;
+      } else {
+        assetPreviewBox.classList.add("hidden");
+        codeEditor.classList.remove("hidden");
+        highlightBackdrop.classList.remove("hidden");
+        lineNumbers.classList.toggle("hidden", isWrapped);
+        codeEditor.value = content;
+        recordUndoSnapshot(fileName, content);
+        updateLineNumbers(true);
+        refreshEditorHighlights();
+      }
+
+      if (syncTree) renderFileTree();
+      if (persist) saveWorkspace();
+    }
+
+    async function deleteFileInstant(fileName) {
+      if (!(fileName in files)) return;
+      delete files[fileName];
+      if (Object.keys(files).length === 0) files["index.html"] = "";
+      if (!(activeFile in files)) activeFile = findEntryHtml() || Object.keys(files)[0];
+      await persistNow();
+      openFile(activeFile);
+    }
+
+    async function deleteFolderInstant(folderPath) {
+      const prefix = folderPath + "/";
+      for (const f of Object.keys(files).filter((k) => k.startsWith(prefix))) {
+        delete files[f];
+      }
+      emptyFolders = emptyFolders.filter((f) => f !== folderPath && !f.startsWith(prefix));
+      if (Object.keys(files).length === 0) files["index.html"] = "";
+      if (!(activeFile in files)) activeFile = findEntryHtml() || Object.keys(files)[0];
+      await persistNow();
+      openFile(activeFile);
+    }
+
+    let lastLineCount = 0;
+    function updateLineNumbers(force = false) {
+      let count = 1;
+      const val = codeEditor.value;
+      for (let i = 0; i < val.length; i++) {
+        if (val.charCodeAt(i) === 10) count++;
+      }
+      if (!force && count === lastLineCount) return;
+      lastLineCount = count;
+      let out = "";
+      for (let i = 1; i <= count; i++) out += i === count ? String(i) : i + "\n";
+      lineNumbers.textContent = out;
+    }
+
+    codeEditor.addEventListener("input", () => {
+      files[activeFile] = codeEditor.value;
+      saveWorkspace();
+      updateLineNumbers();
+      if (activeHighlightMode === "find") updateFindMatches(false);
+      else if (activeHighlightMode === "range") updateRangeStartMatches(false);
+      else refreshEditorHighlights();
+
+      clearTimeout(lastSnapshotTimer);
+      lastSnapshotTimer = setTimeout(() => recordUndoSnapshot(activeFile, codeEditor.value), 450);
+    });
+
+    codeEditor.addEventListener("scroll", () => {
+      lineNumbers.scrollTop = codeEditor.scrollTop;
+      highlightBackdrop.scrollTop = codeEditor.scrollTop;
+      highlightBackdrop.scrollLeft = codeEditor.scrollLeft;
+    });
+
+    codeEditor.addEventListener("keydown", (e) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const start = codeEditor.selectionStart;
+        const end = codeEditor.selectionEnd;
+        codeEditor.value = codeEditor.value.substring(0, start) + "  " + codeEditor.value.substring(end);
+        codeEditor.selectionStart = codeEditor.selectionEnd = start + 2;
+        files[activeFile] = codeEditor.value;
+        recordUndoSnapshot(activeFile, codeEditor.value);
+        saveWorkspace();
+        updateLineNumbers();
+        refreshEditorHighlights();
+      }
+    });
+
+    async function promptCreateFile(prefix = "") {
+      const name = await showCozyPopup({
+        title: "New File",
+        message: "Enter file name (e.g. index.html, style.css, script.js)",
+        icon: "📄",
+        mode: "prompt",
+        placeholder: "e.g. page.html",
+        defaultValue: prefix,
+        confirmText: "Create"
+      });
+      if (!name) return;
+      const cleanName = name.trim().replace(/^\/+/, "").replace(/\/+/g, "/");
+      if (!cleanName || cleanName.endsWith("/")) return;
+      if (!(cleanName in files)) files[cleanName] = "";
+      await persistNow();
+      openFile(cleanName);
+      closeMobileSidebar();
+    }
+
+    async function promptCreateFolder(prefix = "") {
+      const name = await showCozyPopup({
+        title: "New Folder",
+        message: "Enter folder name (e.g. images, js)",
+        icon: "📁",
+        mode: "prompt",
+        placeholder: "e.g. assets",
+        defaultValue: prefix,
+        confirmText: "Create"
+      });
+      if (!name) return;
+      const cleanFolder = name.trim().replace(/^\/+|\/+$/g, "").replace(/\/+/g, "/");
+      if (!cleanFolder) return;
+      if (!emptyFolders.includes(cleanFolder)) emptyFolders.push(cleanFolder);
+      expandParentsOf(cleanFolder + "/dummy");
+      expandedFolders.add(cleanFolder);
+      await persistNow();
+      renderFileTree();
+    }
+
+    newFileBtn.addEventListener("click", () => promptCreateFile(""));
+    newFolderBtn.addEventListener("click", () => promptCreateFolder(""));
+    rootImportZipBtn.addEventListener("click", () => { pendingUploadFolder = ""; zipInput.click(); });
+    rootUploadBtn.addEventListener("click", () => { pendingUploadFolder = ""; assetUploadInput.click(); });
+
+    resetBtn.addEventListener("click", async () => {
+      const confirmed = await showCozyPopup({
+        title: "Reset Current Section?",
+        message: "Clear files in this section and leave blank index.html, style.css, and script.js.",
+        icon: "🧹",
+        tone: "danger",
+        mode: "confirm",
+        confirmText: "Reset"
+      });
+      if (!confirmed) return;
+      files = { "index.html": "", "style.css": "", "script.js": "" };
+      emptyFolders = [];
+      expandedFolders.clear();
+      await persistNow();
+      openFile("index.html");
+    });
+
+    // ZIP Import & File Upload
+    const TEXT_EXTS = new Set([
+      ".html", ".htm", ".css", ".js", ".mjs", ".cjs", ".ts", ".jsx", ".tsx",
+      ".json", ".svg", ".txt", ".md", ".xml", ".csv", ".yml", ".yaml", ".ini", ".env"
+    ]);
+
+    function getMimeType(path) {
+      const lower = path.toLowerCase();
+      const ext = lower.includes(".") ? "." + lower.split(".").pop() : "";
+      const map = {
+        ".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js": "application/javascript",
+        ".mjs": "application/javascript", ".json": "application/json", ".svg": "image/svg+xml",
+        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+        ".webp": "image/webp", ".ico": "image/x-icon", ".mp3": "audio/mpeg", ".wav": "audio/wav",
+        ".ogg": "audio/ogg", ".m4a": "audio/mp4"
+      };
+      return map[ext] || "application/octet-stream";
+    }
+
+    function isTextFile(path) {
+      const lower = path.toLowerCase();
+      const ext = lower.includes(".") ? "." + lower.split(".").pop() : "";
+      return TEXT_EXTS.has(ext);
+    }
+
+    zipInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      const targetFolder = pendingUploadFolder;
+      pendingUploadFolder = "";
+      if (!file) return;
+      if (!(await ensureJSZip())) { zipInput.value = ""; return; }
+
+      try {
+        const zip = await JSZip.loadAsync(file);
+        const validPaths = [];
+        zip.forEach((rel, entry) => {
+          const norm = rel.replace(/\\/g, "/").replace(/^\/+/, "");
+          if (!norm || norm.startsWith("__MACOSX/") || norm.endsWith(".DS_Store") || entry.dir) return;
+          validPaths.push(norm);
+        });
+        if (validPaths.length === 0) return;
+
+        let commonPrefix = "";
+        const firstParts = validPaths[0].split("/");
+        if (firstParts.length > 1 && validPaths.every((p) => p.startsWith(firstParts[0] + "/"))) {
+          commonPrefix = firstParts[0] + "/";
+        }
+
+        const folderPrefix = targetFolder ? `${targetFolder}/` : "";
+        for (const fullPath of validPaths) {
+          const cleanPath = commonPrefix ? fullPath.slice(commonPrefix.length) : fullPath;
+          if (!cleanPath) continue;
+          const destPath = folderPrefix + cleanPath;
+          if (isTextFile(cleanPath)) {
+            files[destPath] = await zip.file(fullPath).async("string");
+          } else {
+            const b64 = await zip.file(fullPath).async("base64");
+            files[destPath] = `data:${getMimeType(cleanPath)};base64,${b64}`;
+          }
+          expandParentsOf(destPath);
+        }
+
+        const entryHtml = findEntryHtml(targetFolder) || Object.keys(files)[0];
+        activeFile = entryHtml;
+        openFile(entryHtml, { syncTree: true, persist: false });
+        await persistNow();
+        closeMobileSidebar();
+      } finally {
+        zipInput.value = "";
+      }
+    });
+
+    assetUploadInput.addEventListener("change", async (e) => {
+      const selectedFiles = Array.from(e.target.files || []);
+      const targetFolder = pendingUploadFolder;
+      pendingUploadFolder = "";
+      if (selectedFiles.length === 0) return;
+      const folderPrefix = targetFolder ? `${targetFolder}/` : "";
+      let lastPath = "";
+      for (const f of selectedFiles) {
+        const dest = folderPrefix + f.name;
+        files[dest] = isTextFile(f.name)
+          ? await f.text()
+          : await new Promise((res, rej) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result);
+              r.onerror = rej;
+              r.readAsDataURL(f);
+            });
+        lastPath = dest;
+      }
+      if (lastPath) openFile(lastPath, { syncTree: true, persist: false });
+      await persistNow();
+      closeMobileSidebar();
+      assetUploadInput.value = "";
+    });
+
+    // VFS & Live Preview Runner
+    function resolvePath(baseFile, targetPath) {
+      if (!targetPath) return null;
+      const trimmed = targetPath.trim();
+      if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
+      const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/");
+      if (!cleanTarget) return null;
+      const baseParts = baseFile.split("/");
+      baseParts.pop();
+      const work = cleanTarget.startsWith("/") ? [] : baseParts;
+      for (const part of cleanTarget.replace(/^\/+/, "").split("/")) {
+        if (part === "." || part === "") continue;
+        if (part === "..") { if (work.length > 0) work.pop(); }
+        else work.push(part);
+      }
+      return work.join("/");
+    }
+
+    function lookupAssetUrl(resolvedPath, assetMap) {
+      if (!resolvedPath) return null;
+      if (assetMap[resolvedPath]) return assetMap[resolvedPath];
+      const lower = resolvedPath.toLowerCase();
+      const exact = Object.keys(assetMap).find((k) => k.toLowerCase() === lower);
+      if (exact) return assetMap[exact];
+      const base = lower.split("/").pop();
+      if (base) {
+        const fallback = Object.keys(assetMap).find((k) => k.toLowerCase().split("/").pop() === base);
+        if (fallback) return assetMap[fallback];
+      }
+      return null;
+    }
+
+    function isMediaOrImageFile(path) {
+      const lower = path.toLowerCase();
+      return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".mp3", ".wav", ".ogg", ".m4a"].some((ext) => lower.endsWith(ext));
+    }
+
+    function toSafeDataUrl(content, path) {
+      if (typeof content === "string" && content.startsWith("data:")) return content;
+      const mime = getMimeType(path);
+      try {
+        const bytes = new TextEncoder().encode(String(content || ""));
+        let bin = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        }
+        return `data:${mime};base64,${btoa(bin)}`;
+      } catch (e) {
+        return `data:${mime};charset=utf-8,${encodeURIComponent(String(content || ""))}`;
+      }
+    }
+
+    function rewriteCssContent(cssText, cssFilePath, assetMap) {
+      return cssText.replace(/url\(\s*(['"]?)([^'"()]+)\1\s*\)/gi, (match, quote, rawUrl) => {
+        const mapped = lookupAssetUrl(resolvePath(cssFilePath, rawUrl), assetMap);
+        return mapped ? `url("${mapped}")` : match;
+      });
+    }
+
+    function revokePreviousBlobs() {
+      for (const u of activeBlobUrls) { try { URL.revokeObjectURL(u); } catch (e) {} }
+      activeBlobUrls = [];
+    }
+
+    function createTrackedBlobUrl(content, mime, bucket = activeBlobUrls) {
+      const url = URL.createObjectURL(new Blob([content], { type: mime }));
+      bucket.push(url);
+      return url;
+    }
+
+    function buildAssetMap(bucket) {
+      const assetMap = {};
+      for (const [path, content] of Object.entries(files)) {
+        const lower = path.toLowerCase();
+        if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
+        if (isMediaOrImageFile(path)) assetMap[path] = toSafeDataUrl(content, path);
+        else if (typeof content === "string" && content.startsWith("data:")) assetMap[path] = content;
+        else assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
+      }
+      for (const [path, content] of Object.entries(files)) {
+        if (!path.toLowerCase().endsWith(".css")) continue;
+        assetMap[path] = createTrackedBlobUrl(rewriteCssContent(content, path, assetMap), "text/css", bucket);
+      }
+      return assetMap;
+    }
+
+    function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
+      let htmlContent = files[htmlPath] || "";
+      htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (m, attrs, css) => `<style${attrs}>${rewriteCssContent(css, htmlPath, assetMap)}</style>`);
+      htmlContent = htmlContent.replace(/\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi, (m, attr, q, raw) => {
+        const resolved = resolvePath(htmlPath, raw);
+        if (!resolved) return m;
+        const mapped = lookupAssetUrl(resolved, assetMap);
+        return mapped ? `${attr}=${q}${mapped}${q}` : m;
+      });
+
+      const vfsPayload = JSON.stringify({ baseFile: htmlPath, assets: assetMap, pages: htmlPagesMap || {}, external: isExternalBrowser });
+      const runtimeHook = `<script>(function(){
+        const VFS=${vfsPayload};
+        function resMap(raw,map){
+          if(!raw||typeof raw!=='string')return null;
+          const t=raw.trim();if(/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(t))return null;
+          const clean=t.split('?')[0].split('#')[0].replace(/\\\\/g,'/');
+          const bp=VFS.baseFile.split('/');bp.pop();
+          const w=clean.startsWith('/')?[]:bp;
+          for(const p of clean.replace(/^\\/+/, '').split('/')){if(p&&p!=='.'){if(p==='..')w.pop();else w.push(p);}}
+          const r=w.join('/');if(map[r])return map[r];
+          const l=r.toLowerCase();const k=Object.keys(map).find(x=>x.toLowerCase()===l);if(k)return map[k];
+          const b=l.split('/').pop();const fb=b&&Object.keys(map).find(x=>x.toLowerCase().split('/').pop()===b);
+          return fb?map[fb]:null;
+        }
+        const origFetch=window.fetch;if(origFetch)window.fetch=function(i,init){if(typeof i==='string'){const m=resMap(i,VFS.assets);if(m)i=m;}return origFetch.call(this,i,init);};
+        function hookSrc(P){const d=P&&Object.getOwnPropertyDescriptor(P,'src');if(d&&d.set)Object.defineProperty(P,'src',{get:d.get,set:function(v){return d.set.call(this,resMap(v,VFS.assets)||v);},configurable:true});}
+        hookSrc(HTMLImageElement.prototype);hookSrc(HTMLMediaElement.prototype);hookSrc(HTMLScriptElement.prototype);
+        const origSet=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if(typeof v==='string'&&/^(src|href)$/i.test(n)){const m=resMap(v,VFS.assets);if(m)v=m;}return origSet.call(this,n,v);};
+        if(!VFS.external&&window.parent!==window){
+          const send=(type,args)=>{try{window.parent.postMessage({source:'pikaedit-console',type,message:Array.from(args).map(a=>typeof a==='object'?JSON.stringify(a):String(a)).join(' ')},'*');}catch(e){}};
+          const l=console.log,w=console.warn,er=console.error;
+          console.log=function(){send('info',arguments);l.apply(console,arguments);};
+          console.warn=function(){send('warn',arguments);w.apply(console,arguments);};
+          console.error=function(){send('error',arguments);er.apply(console,arguments);};
+        }
+      })();<\/script>`;
+
+      return /<head[^>]*>/i.test(htmlContent)
+        ? htmlContent.replace(/<head[^>]*>/i, (m) => m + runtimeHook)
+        : runtimeHook + htmlContent;
+    }
+
+    async function runProject(overrideHtml = null) {
+      clearConsole();
+      revokePreviousBlobs();
+      togglePreviewDropdown(false);
+
+      const targetHtml = (overrideHtml && files[overrideHtml] !== undefined ? overrideHtml : null) || findEntryHtml("");
+      if (!targetHtml) return;
+
+      currentPreviewHtmlFile = targetHtml;
+      previewTitle.textContent = targetHtml;
+      const assetMap = buildAssetMap(activeBlobUrls);
+      previewFrame.srcdoc = compileSingleHtmlDocument(targetHtml, assetMap, null, false);
+      previewModal.classList.remove("hidden");
+    }
+
+    runBtn.addEventListener("click", () => runProject());
+    reloadPreviewBtn.addEventListener("click", () => runProject(currentPreviewHtmlFile));
+    closePreviewBtn.addEventListener("click", () => {
+      togglePreviewDropdown(false);
+      exitAppFullscreen();
+      previewModal.classList.add("hidden");
+      previewFrame.srcdoc = "";
+      revokePreviousBlobs();
+    });
+
+    openBrowserBtn.addEventListener("click", () => {
+      togglePreviewDropdown(false);
+      const targetHtml = currentPreviewHtmlFile || findEntryHtml("");
+      if (!targetHtml) return;
+      const assetMap = buildAssetMap(browserTabBlobUrls);
+      const htmlPagesMap = {};
+      for (const h of Object.keys(files).filter((p) => p.toLowerCase().endsWith(".html"))) {
+        htmlPagesMap[h] = createTrackedBlobUrl(compileSingleHtmlDocument(h, assetMap, null, true), "text/html", browserTabBlobUrls);
+      }
+      const url = htmlPagesMap[targetHtml];
+      if (url) window.open(url, "_blank", "noopener");
+    });
+
+    window.addEventListener("message", (e) => {
+      if (e.data && e.data.source === "pikaedit-console") {
+        appendConsoleLog(e.data.type, e.data.message);
+      }
+    });
+
+    function appendConsoleLog(type, text) {
+      logCount++;
+      consoleBadge.textContent = logCount;
+      const div = document.createElement("div");
+      div.className = `log-line log-${type}`;
+      div.textContent = `> ${text}`;
+      consoleLogs.appendChild(div);
+      consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    }
+
+    function clearConsole() {
+      logCount = 0;
+      consoleBadge.textContent = "0";
+      consoleLogs.innerHTML = "";
+    }
+
+    consoleToggleBtn.addEventListener("click", () => consolePanel.classList.toggle("hidden"));
+    clearConsoleBtn.addEventListener("click", clearConsole);
+
+    function closeMobileSidebar() {
+      sidebar.classList.remove("open");
+      sidebarBackdrop.classList.remove("show");
+    }
+
+    menuBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+      sidebarBackdrop.classList.toggle("show");
+    });
+
+    sidebarBackdrop.addEventListener("click", closeMobileSidebar);
+
+    (async function initWorkspace() {
+      const [savedWorkspaces, savedSlotIdx] = await Promise.all([
+        idbGet("workspaces_v2"),
+        idbGet("currentSlotIndex_v2")
+      ]);
+      if (Array.isArray(savedWorkspaces) && savedWorkspaces.length > 0) {
+        workspaces = savedWorkspaces;
+        currentSlotIndex = typeof savedSlotIdx === "number" && savedSlotIdx < workspaces.length ? savedSlotIdx : 0;
+        const slot = workspaces[currentSlotIndex];
+        files = slot.files && Object.keys(slot.files).length > 0 ? slot.files : { "index.html": "" };
+        emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
+        expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
+        activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
+      }
+      updateSlotBarUI();
+      openFile(activeFile, { syncTree: true, persist: false });
+    })();
+  </script>
+</body>
+</html>
