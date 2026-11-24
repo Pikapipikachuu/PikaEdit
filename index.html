@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>PikaEdit — Code Editor & ZIP Runner</title>
+  <title>PikaEdit — Code Editor & Live Runner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -27,6 +27,7 @@
       --mint-dark: #042419;
       --danger: #fb7185;
       --warn: #fbbf24;
+      --sky: #38bdf8;
       --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
       --font-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     }
@@ -62,9 +63,7 @@
       overflow: hidden;
     }
 
-    /* =====================================================================
-       1. TOP BRAND BAR (<P> PikaEdit + Undo / Redo / Triple-Dot)
-    ===================================================================== */
+    /* 1. Top Brand Bar */
     .brandbar {
       display: flex;
       align-items: center;
@@ -115,7 +114,7 @@
       background: var(--bg-elevated);
       color: var(--text-main);
       cursor: pointer;
-      transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+      transition: background 0.15s ease, transform 0.1s ease;
     }
 
     .mini-tool-btn:active, .dots-btn:active, .icon-btn:active {
@@ -133,9 +132,7 @@
       background: var(--bg-elevated);
     }
 
-    /* =====================================================================
-       2. EDITOR ACTION BAR (ONLY Hamburger on Left + Save & Run on Right)
-    ===================================================================== */
+    /* 2. Editor Action Bar: Hamburger left + Save (active file only) & Run right */
     .topbar {
       display: flex;
       align-items: center;
@@ -148,12 +145,7 @@
       z-index: 25;
     }
 
-    .topbar-left {
-      display: flex;
-      align-items: center;
-    }
-
-    .topbar-right {
+    .topbar-left, .topbar-right {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -192,9 +184,7 @@
       box-shadow: 0 2px 10px rgba(16, 185, 129, 0.28);
     }
 
-    /* =====================================================================
-       3. OPEN FILE TABS STRIP
-    ===================================================================== */
+    /* 3. Scrollable Quick File Tabs Strip */
     .file-tabs-bar {
       display: flex;
       align-items: center;
@@ -235,9 +225,7 @@
       font-weight: 600;
     }
 
-    /* =====================================================================
-       4. TRIPLE-DOT DROPDOWN MENU
-    ===================================================================== */
+    /* 4. Triple-Dot Dropdown Menu */
     .wa-dropdown {
       position: absolute;
       top: 48px;
@@ -314,9 +302,7 @@
       margin: 5px 6px;
     }
 
-    /* =====================================================================
-       5. COMPACT FIND & REPLACE + VISUAL DELETE RANGE BARS
-    ===================================================================== */
+    /* 5. Find & Replace + Visual Delete Range Tool Strips */
     .tool-strip-bar {
       display: flex;
       flex-direction: column;
@@ -401,9 +387,7 @@
       color: var(--danger);
     }
 
-    /* =====================================================================
-       6. WORKSPACE, DECLUTTERED EXPLORER DRAWER & MULTI-SECTION BAR
-    ===================================================================== */
+    /* 6. Workspace & Explorer Drawer */
     .workspace {
       display: flex;
       flex: 1;
@@ -460,7 +444,6 @@
       pointer-events: auto;
     }
 
-    /* Single Compact Action Row: + File | + Folder | ZIP | Files | Reset */
     .sidebar-single-actions {
       display: flex;
       align-items: center;
@@ -504,7 +487,6 @@
       transform: scale(0.95);
     }
 
-    /* Section Bar: < | Section X / Y | Swipe left -> New */
     .workspace-slot-bar {
       display: flex;
       align-items: center;
@@ -542,7 +524,6 @@
       color: var(--text-muted);
     }
 
-    /* Multi-select bar when Select Files mode is active */
     .multi-select-bar {
       display: flex;
       align-items: center;
@@ -655,9 +636,7 @@
       cursor: pointer;
     }
 
-    /* =====================================================================
-       7. CODE EDITOR + SYNCED PASTEL HIGHLIGHT BACKDROP
-    ===================================================================== */
+    /* 7. Code Editor + Synced Highlight Backdrop */
     .editor-wrapper {
       flex: 1;
       display: flex;
@@ -754,6 +733,12 @@
       box-shadow: 0 0 0 1.5px rgba(251, 113, 133, 0.9);
     }
 
+    .highlight-backdrop mark.hl-range-span {
+      background: rgba(251, 113, 133, 0.22);
+      color: transparent;
+      border-radius: 2px;
+    }
+
     .code-editor {
       z-index: 2;
       background: transparent;
@@ -783,9 +768,7 @@
       background: #090c12;
     }
 
-    /* =====================================================================
-       8. MOBILE QUICK SYMBOL BAR (HIDDEN/OFF BY DEFAULT)
-    ===================================================================== */
+    /* 8. Quick Symbol Bar (Default OFF) */
     .symbol-bar {
       display: flex;
       align-items: center;
@@ -821,9 +804,7 @@
       color: var(--mint-bright);
     }
 
-    /* =====================================================================
-       9. LONG-PRESS FLOATING CONTEXT MENU
-    ===================================================================== */
+    /* 9. Long-Press Floating Context Menu */
     .context-menu-card {
       position: fixed;
       min-width: 175px;
@@ -861,9 +842,7 @@
       color: var(--danger);
     }
 
-    /* =====================================================================
-       10. IN-APP PRIVACY POLICY LARGE MODAL POPUP
-    ===================================================================== */
+    /* 10. In-App Privacy Policy Modal */
     .privacy-overlay {
       position: fixed;
       inset: 0;
@@ -935,9 +914,7 @@
       justify-content: flex-end;
     }
 
-    /* =====================================================================
-       11. LIVE RUNNER PREVIEW MODAL & CONSOLE DRAWER
-    ===================================================================== */
+    /* 11. Live Runner Preview Modal & Console */
     .preview-modal {
       position: fixed;
       inset: 0;
@@ -1027,9 +1004,7 @@
     .log-warn { color: var(--warn); }
     .log-error { color: var(--danger); }
 
-    /* =====================================================================
-       12. FULLSCREEN EXIT PILL, FOLDER BOTTOM SHEET & COZY DIALOG
-    ===================================================================== */
+    /* 12. Fullscreen, Folder Sheet & Cozy Dialog */
     body.app-fullscreen .brandbar,
     body.app-fullscreen .topbar,
     body.app-fullscreen .file-tabs-bar,
@@ -1259,7 +1234,7 @@
 </head>
 <body>
   <div id="appContainer" class="app-container">
-    <!-- Top Brand Bar: <P> PikaEdit on LEFT + Undo / Redo / 3-Dots on RIGHT -->
+    <!-- Top Brand Bar -->
     <header class="brandbar">
       <div class="brand-left">
         <svg class="brand-logo-svg" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -1294,7 +1269,7 @@
       </div>
     </header>
 
-    <!-- Editor Action Bar: ONLY Hamburger Menu on Left + Save & Run on Right -->
+    <!-- Second Bar: Hamburger left + Save (active file only) & Run right -->
     <header class="topbar">
       <div class="topbar-left">
         <button id="menuBtn" class="icon-btn" title="Files & Folders" aria-label="Toggle Files">
@@ -1307,7 +1282,7 @@
       </div>
 
       <div class="topbar-right">
-        <button id="exportZipBtn" class="action-btn secondary" title="Download Project ZIP">
+        <button id="saveFileBtn" class="action-btn secondary" title="Download Active File">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -1328,7 +1303,7 @@
     <!-- Scrollable File Tabs Strip -->
     <div id="fileTabsBar" class="file-tabs-bar" aria-label="Open files"></div>
 
-    <!-- Triple-Dot Dropdown Menu (Copy All Code removed, Privacy Policy opens in-app modal) -->
+    <!-- Triple-Dot Dropdown Menu -->
     <div id="waDropdown" class="wa-dropdown hidden" role="menu">
       <button id="menuFullscreenBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">⛶</span>
@@ -1358,17 +1333,9 @@
       </button>
 
       <div class="wa-divider"></div>
-      <button id="menuImportZipBtn" class="wa-menu-item" role="menuitem">
-        <span class="wa-item-icon">📥</span>
-        <span class="wa-item-label">Import Project ZIP</span>
-      </button>
       <button id="menuSaveZipBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">📦</span>
         <span class="wa-item-label">Export Project ZIP</span>
-      </button>
-      <button id="menuResetBtn" class="wa-menu-item danger" role="menuitem">
-        <span class="wa-item-icon">🧹</span>
-        <span class="wa-item-label">Reset Workspace</span>
       </button>
     </div>
 
@@ -1376,7 +1343,7 @@
     <input type="file" id="zipInput" accept=".zip,application/zip,application/x-zip-compressed,*/*" hidden />
     <input type="file" id="assetUploadInput" multiple hidden />
 
-    <!-- Find & Replace Bar (Keeps focus in Find box + Highlights all matches + All toggle) -->
+    <!-- Find & Replace Bar -->
     <div id="findBar" class="tool-strip-bar hidden">
       <div class="tool-strip-row">
         <input type="text" id="findInput" class="compact-search-input" placeholder="Find word..." spellcheck="false" autocapitalize="off" autocomplete="off" />
@@ -1393,7 +1360,7 @@
       </div>
     </div>
 
-    <!-- Visual Delete Range Bar (Highlight Start & End matches with Up/Down navigation) -->
+    <!-- Visual Delete Range Bar -->
     <div id="rangeBar" class="tool-strip-bar hidden">
       <div class="tool-strip-row">
         <input type="text" id="rangeStartInput" class="compact-search-input" placeholder="Start text..." spellcheck="false" autocapitalize="off" autocomplete="off" />
@@ -1414,9 +1381,7 @@
 
     <!-- Main Workspace -->
     <div class="workspace">
-      <!-- Decluttered File & Folder Drawer -->
       <aside id="sidebar" class="sidebar">
-        <!-- Single Compact Action Row: + File | + Folder | ZIP | Files | Reset -->
         <div class="sidebar-single-actions">
           <button id="newFileBtn" class="exp-pill-btn mint" title="New File">+ File</button>
           <button id="newFolderBtn" class="exp-pill-btn" title="New Folder">+ Folder</button>
@@ -1425,14 +1390,12 @@
           <button id="resetBtn" class="exp-pill-btn danger" title="Reset Section">Reset</button>
         </div>
 
-        <!-- Workspace Section Bar -->
         <div id="workspaceSlotBar" class="workspace-slot-bar">
           <button id="prevSlotBtn" class="slot-nav-btn hidden" title="Previous Section">‹</button>
           <span id="workspaceSlotLabel" class="slot-label">Section 1 / 1</span>
           <span class="slot-hint">Swipe left → New</span>
         </div>
 
-        <!-- Multi-Select Action Bar (Shown when 'Select Files' chosen from long-press menu) -->
         <div id="multiSelectBar" class="multi-select-bar hidden">
           <span id="multiSelectCount" class="multi-select-count">0 selected</span>
           <div style="display:flex; gap:6px;">
@@ -1444,10 +1407,8 @@
         <div id="fileTree" class="file-tree"></div>
       </aside>
 
-      <!-- Mobile Backdrop -->
       <div id="sidebarBackdrop" class="backdrop"></div>
 
-      <!-- Code Editor Area with Synced Highlight Layer -->
       <main class="editor-wrapper">
         <div id="lineNumbers" class="line-numbers">1</div>
         <div id="editorStage" class="editor-stage">
@@ -1470,7 +1431,7 @@
       </main>
     </div>
 
-    <!-- Mobile Quick Symbol Bar (OFF / Hidden by Default) -->
+    <!-- Quick Symbol Bar (Default OFF) -->
     <div id="symbolBar" class="symbol-bar hidden">
       <button type="button" class="sym-key tab-key" data-insert="  ">Tab</button>
       <button type="button" class="sym-key" data-insert="<">&lt;</button>
@@ -1508,7 +1469,7 @@
     </button>
   </div>
 
-  <!-- In-App Privacy Policy Large Popup -->
+  <!-- In-App Privacy Policy Popup -->
   <div id="privacyModalOverlay" class="privacy-overlay hidden" role="dialog" aria-modal="true">
     <div class="privacy-modal-card">
       <div class="privacy-modal-header">
@@ -1517,16 +1478,16 @@
       </div>
       <div class="privacy-modal-body">
         <h4>1. 100% Local &amp; Offline-First Storage</h4>
-        <p>PikaEdit stores all your HTML, CSS, JavaScript, ZIP archives, images, and audio assets strictly on your device using your browser's local IndexedDB storage. Your code and project files are never uploaded to any external PikaEdit server.</p>
+        <p>PikaEdit stores all your HTML, CSS, JavaScript, ZIP archives, images, and audio assets strictly on your device using your browser's local IndexedDB storage. Your code and project files are never uploaded to any external server.</p>
 
         <h4>2. Zero Tracking &amp; No Account Required</h4>
-        <p>We do not require sign-ups, logins, or personal details. PikaEdit does not collect analytics, keystrokes, or personal identifiers from your workspace sections.</p>
+        <p>No sign-ups, logins, or personal details are required. PikaEdit does not collect analytics, keystrokes, or personal identifiers.</p>
 
         <h4>3. Virtual File System (VFS) &amp; Live Runner</h4>
-        <p>When you tap Run or Open in Device Browser, PikaEdit compiles your project locally inside your browser using in-memory Data URLs and Blob URLs. External libraries (such as JSZip from cdnjs) are fetched only when needed to extract or bundle ZIP archives.</p>
+        <p>When you tap Run or Open in Device Browser, PikaEdit compiles your project locally inside your browser using in-memory Data URLs and Blob URLs.</p>
 
         <h4>4. Complete User Control</h4>
-        <p>You can export any section or folder as a `.zip` file anytime, or wipe individual files, folders, or sections instantly using swipe gestures, multi-select, or Reset.</p>
+        <p>You can download individual files, export a section as a `.zip` file anytime, or remove files, folders, and sections using swipe gestures, multi-select, or Reset.</p>
       </div>
       <div class="privacy-modal-footer">
         <button id="closePrivacyBottomBtn" class="action-btn primary">Close</button>
@@ -1560,7 +1521,6 @@
       </div>
     </div>
 
-    <!-- Preview Triple-Dot Dropdown -->
     <div id="previewDropdown" class="wa-dropdown preview-dropdown hidden" role="menu">
       <button id="openBrowserBtn" class="wa-menu-item" role="menuitem">
         <span class="wa-item-icon">🌐</span>
@@ -1578,7 +1538,6 @@
 
     <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-same-origin"></iframe>
 
-    <!-- Built-in Console Drawer -->
     <div id="consolePanel" class="console-panel hidden">
       <div class="console-header">
         <span>CONSOLE LOGS</span>
@@ -1588,7 +1547,7 @@
     </div>
   </div>
 
-  <!-- Floating Exit Button shown ONLY during Full Screen Mode -->
+  <!-- Exit Fullscreen Pill -->
   <button id="exitFullscreenBtn" class="exit-fs-pill hidden" title="Exit Full Screen">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
       <polyline points="4 14 10 14 10 20"></polyline>
@@ -1686,62 +1645,142 @@
   </div>
 
   <script>
-    // =========================================================================
-    // STARTER FILES & MULTI-WORKSPACE INDEXEDDB STORAGE
-    // =========================================================================
     const DEFAULT_FILES = {
       "index.html": `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Project</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PikaEdit Live Demo</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="card">
-    <h1>Hello Pika Boy! 🚀</h1>
-    <p>Switch files from the top pills, or open the drawer to import a .zip project.</p>
-    <button id="clickBtn">Test JS Click</button>
+  <div class="arena">
+    <span class="tag">PikaEdit Live Preview</span>
+    <h1>Bid &amp; Build Arena</h1>
+    <p>Edit <code>style.css</code> or <code>script.js</code>, then tap <strong>Run</strong> to see live changes.</p>
+    <div class="stats">
+      <div class="box"><strong id="scoreVal">100</strong><span>Score</span></div>
+      <div class="box"><strong id="boostVal">1x</strong><span>Boost</span></div>
+    </div>
+    <button id="boostBtn">Trigger Boost</button>
   </div>
   <script src="script.js"><\/script>
 </body>
 </html>`,
-      "style.css": `body {
-  font-family: system-ui, sans-serif;
-  background: #10141e;
-  color: #f8fafc;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
+      "style.css": `* {
+  box-sizing: border-box;
   margin: 0;
+  padding: 0;
 }
 
-.card {
-  background: #1b2130;
-  padding: 28px;
-  border-radius: 16px;
+body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at top, #182238, #0b0f19 72%);
+  color: #f8fafc;
+}
+
+.arena {
+  width: 100%;
+  max-width: 380px;
+  background: #141b2d;
+  border: 1px solid #293552;
+  border-radius: 18px;
+  padding: 24px;
   text-align: center;
-  border: 1px solid #313b54;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+p {
+  font-size: 13.5px;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 18px;
+}
+
+code {
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.box {
+  background: #0e1320;
+  border: 1px solid #232d45;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.box strong {
+  display: block;
+  font-size: 20px;
+  color: #34d399;
+}
+
+.box span {
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 button {
-  margin-top: 14px;
-  padding: 10px 20px;
+  width: 100%;
+  height: 40px;
   border: none;
-  border-radius: 10px;
+  border-radius: 11px;
   background: #10b981;
   color: #042419;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }`,
-      "script.js": `document.getElementById("clickBtn").addEventListener("click", () => {
-  console.log("Button clicked successfully!");
+      "script.js": `let score = 100;
+let level = 1;
+
+const scoreEl = document.getElementById("scoreVal");
+const boostEl = document.getElementById("boostVal");
+const btn = document.getElementById("boostBtn");
+
+btn.addEventListener("click", () => {
+  level += 1;
+  score += level * 25;
+  scoreEl.textContent = String(score);
+  boostEl.textContent = level + "x";
+  console.log("Boost active:", level + "x", "Score:", score);
 });`
     };
 
+    const STORAGE_KEY = "pikaedit_project_files_v2";
+    const FOLDERS_KEY = "pikaedit_folders_v2";
+    const ACTIVE_KEY = "pikaedit_active_file_v2";
+
+    // IndexedDB Storage
     const DB_NAME = "PikaEditWorkspaceDB";
     const DB_STORE = "workspace";
     let dbInstance = null;
@@ -1829,13 +1868,10 @@ button {
     let sheetTargetFolder = "";
     let pendingUploadFolder = "";
 
-    // Multi-select state in Explorer drawer
     let isMultiSelectMode = false;
     let selectedPaths = new Set();
 
-    // =========================================================================
-    // DOM REFERENCES
-    // =========================================================================
+    // DOM References
     const undoBtn = document.getElementById("undoBtn");
     const redoBtn = document.getElementById("redoBtn");
     const moreMenuBtn = document.getElementById("moreMenuBtn");
@@ -1848,9 +1884,7 @@ button {
     const menuFindBtn = document.getElementById("menuFindBtn");
     const menuDeleteRangeBtn = document.getElementById("menuDeleteRangeBtn");
     const menuPrivacyBtn = document.getElementById("menuPrivacyBtn");
-    const menuImportZipBtn = document.getElementById("menuImportZipBtn");
     const menuSaveZipBtn = document.getElementById("menuSaveZipBtn");
-    const menuResetBtn = document.getElementById("menuResetBtn");
     const exitFullscreenBtn = document.getElementById("exitFullscreenBtn");
     const previewFullscreenBtn = document.getElementById("previewFullscreenBtn");
 
@@ -1911,7 +1945,7 @@ button {
 
     const zipInput = document.getElementById("zipInput");
     const assetUploadInput = document.getElementById("assetUploadInput");
-    const exportZipBtn = document.getElementById("exportZipBtn");
+    const saveFileBtn = document.getElementById("saveFileBtn");
     const newFileBtn = document.getElementById("newFileBtn");
     const newFolderBtn = document.getElementById("newFolderBtn");
     const resetBtn = document.getElementById("resetBtn");
@@ -1919,7 +1953,6 @@ button {
     const rootUploadBtn = document.getElementById("rootUploadBtn");
     const runBtn = document.getElementById("runBtn");
 
-    // Long-press context menu & Privacy modal DOM
     const fileAreaContextMenu = document.getElementById("fileAreaContextMenu");
     const ctxSelectFilesBtn = document.getElementById("ctxSelectFilesBtn");
     const ctxDeleteSectionBtn = document.getElementById("ctxDeleteSectionBtn");
@@ -1929,7 +1962,6 @@ button {
     const closePrivacyTopBtn = document.getElementById("closePrivacyTopBtn");
     const closePrivacyBottomBtn = document.getElementById("closePrivacyBottomBtn");
 
-    // Preview Modal DOM
     const previewModal = document.getElementById("previewModal");
     const closePreviewBtn = document.getElementById("closePreviewBtn");
     const reloadPreviewBtn = document.getElementById("reloadPreviewBtn");
@@ -1941,7 +1973,6 @@ button {
     const consoleBadge = document.getElementById("consoleBadge");
     const clearConsoleBtn = document.getElementById("clearConsoleBtn");
 
-    // Folder Sheet & Cozy Modal DOM
     const folderSheetOverlay = document.getElementById("folderSheetOverlay");
     const sheetFolderTitle = document.getElementById("sheetFolderTitle");
     const closeSheetBtn = document.getElementById("closeSheetBtn");
@@ -1960,9 +1991,7 @@ button {
     const cozyCancelBtn = document.getElementById("cozyCancelBtn");
     const cozyConfirmBtn = document.getElementById("cozyConfirmBtn");
 
-    // =========================================================================
-    // PERSISTENCE & MULTI-SECTION WORKSPACE MANAGEMENT
-    // =========================================================================
+    // Persistence & Multi-Section Management
     function syncCurrentSlotState() {
       if (!workspaces[currentSlotIndex]) {
         workspaces[currentSlotIndex] = createNewSlotObject();
@@ -1988,6 +2017,11 @@ button {
       syncCurrentSlotState();
       await idbSet("workspaces_v2", workspaces);
       await idbSet("currentSlotIndex_v2", currentSlotIndex);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(files));
+        window.localStorage.setItem(FOLDERS_KEY, JSON.stringify(emptyFolders));
+        window.localStorage.setItem(ACTIVE_KEY, activeFile);
+      } catch (e) {}
     }
 
     async function switchWorkspaceSlot(targetIndex, createIfMissing = false) {
@@ -2005,12 +2039,7 @@ button {
       files = slot.files;
       emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
       expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
-
-      if (slot.activeFile && slot.activeFile in files) {
-        activeFile = slot.activeFile;
-      } else {
-        activeFile = findEntryHtml() || Object.keys(files)[0] || "index.html";
-      }
+      activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
 
       updateSlotBarUI();
       fileTreeEl.classList.remove("slot-slide-in");
@@ -2033,8 +2062,7 @@ button {
       }
 
       workspaces.splice(currentSlotIndex, 1);
-      const nextIdx = Math.min(currentSlotIndex, workspaces.length - 1);
-      currentSlotIndex = nextIdx;
+      currentSlotIndex = Math.min(currentSlotIndex, workspaces.length - 1);
       const slot = workspaces[currentSlotIndex];
       files = slot.files;
       emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
@@ -2048,44 +2076,31 @@ button {
 
     prevSlotBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (currentSlotIndex > 0) {
-        switchWorkspaceSlot(currentSlotIndex - 1, false);
+      if (currentSlotIndex > 0) switchWorkspaceSlot(currentSlotIndex - 1, false);
+    });
+
+    // Save Button: Downloads ONLY the currently open active file
+    saveFileBtn.addEventListener("click", () => {
+      if (!activeFile || !(activeFile in files)) return;
+      const content = files[activeFile];
+      const baseName = activeFile.split("/").pop() || "file.txt";
+      const a = document.createElement("a");
+
+      if (typeof content === "string" && content.startsWith("data:")) {
+        a.href = content;
+        a.download = baseName;
+        a.click();
+      } else {
+        const blob = new Blob([String(content || "")], { type: getMimeType(baseName) });
+        const url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = baseName;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     });
 
-    // =========================================================================
-    // VIEWPORT & PREVENT MOBILE PULL-TO-REFRESH
-    // =========================================================================
-    (function preventPullToRefresh() {
-      let touchStartY = 0;
-      document.addEventListener("touchstart", (e) => {
-        if (e.touches.length === 1) touchStartY = e.touches[0].clientY;
-      }, { passive: true });
-
-      document.addEventListener("touchmove", (e) => {
-        if (e.touches.length !== 1) return;
-        const isPullingDown = e.touches[0].clientY > touchStartY;
-        if (!isPullingDown) return;
-
-        let el = e.target;
-        while (el && el !== document.body && el !== document.documentElement) {
-          if (el.scrollHeight > el.clientHeight && el.scrollTop > 0) return;
-          el = el.parentElement;
-        }
-        if (e.cancelable) e.preventDefault();
-      }, { passive: false });
-    })();
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", () => {
-        const appEl = document.getElementById("appContainer");
-        if (appEl) appEl.style.height = `${window.visualViewport.height}px`;
-      });
-    }
-
-    // =========================================================================
-    // UNDO / REDO HISTORY STACK
-    // =========================================================================
+    // Undo / Redo Stack
     const undoStack = {};
     const redoStack = {};
     let lastSnapshotTimer = null;
@@ -2109,10 +2124,8 @@ button {
       const key = getUndoKey(activeFile);
       const stack = undoStack[key] || [];
       if (stack.length <= 1) return;
-
       if (!redoStack[key]) redoStack[key] = [];
       redoStack[key].push(stack.pop());
-
       const prev = stack[stack.length - 1];
       codeEditor.value = prev;
       files[activeFile] = prev;
@@ -2126,11 +2139,9 @@ button {
       const key = getUndoKey(activeFile);
       const rStack = redoStack[key] || [];
       if (rStack.length === 0) return;
-
       const next = rStack.pop();
       if (!undoStack[key]) undoStack[key] = [];
       undoStack[key].push(next);
-
       codeEditor.value = next;
       files[activeFile] = next;
       saveWorkspace();
@@ -2138,9 +2149,7 @@ button {
       refreshEditorHighlights();
     });
 
-    // =========================================================================
-    // 3-DOTS MENU, PRIVACY MODAL & FULLSCREEN
-    // =========================================================================
+    // Menus, Privacy Modal & Fullscreen
     function toggleWaDropdown(forceState) {
       const show = typeof forceState === "boolean" ? forceState : waDropdown.classList.contains("hidden");
       waDropdown.classList.toggle("hidden", !show);
@@ -2153,15 +2162,8 @@ button {
       previewMoreBtn.setAttribute("aria-expanded", String(show));
     }
 
-    moreMenuBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleWaDropdown();
-    });
-
-    previewMoreBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      togglePreviewDropdown();
-    });
+    moreMenuBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleWaDropdown(); });
+    previewMoreBtn.addEventListener("click", (e) => { e.stopPropagation(); togglePreviewDropdown(); });
 
     document.addEventListener("click", (e) => {
       if (!waDropdown.classList.contains("hidden") && !waDropdown.contains(e.target) && !moreMenuBtn.contains(e.target)) {
@@ -2175,23 +2177,16 @@ button {
       }
     });
 
-    // In-App Privacy Policy Modal
     menuPrivacyBtn.addEventListener("click", () => {
       toggleWaDropdown(false);
       privacyModalOverlay.classList.remove("hidden");
     });
 
-    function closePrivacyModal() {
-      privacyModalOverlay.classList.add("hidden");
-    }
-
+    function closePrivacyModal() { privacyModalOverlay.classList.add("hidden"); }
     closePrivacyTopBtn.addEventListener("click", closePrivacyModal);
     closePrivacyBottomBtn.addEventListener("click", closePrivacyModal);
-    privacyModalOverlay.addEventListener("click", (e) => {
-      if (e.target === privacyModalOverlay) closePrivacyModal();
-    });
+    privacyModalOverlay.addEventListener("click", (e) => { if (e.target === privacyModalOverlay) closePrivacyModal(); });
 
-    // Full Screen Mode
     function enterAppFullscreen() {
       toggleWaDropdown(false);
       togglePreviewDropdown(false);
@@ -2209,7 +2204,6 @@ button {
     previewFullscreenBtn.addEventListener("click", enterAppFullscreen);
     exitFullscreenBtn.addEventListener("click", exitAppFullscreen);
 
-    // Quick Symbol Bar (Default OFF, toggled via 3-dots)
     menuSymbolBarBtn.addEventListener("click", () => {
       const isHidden = symbolBar.classList.toggle("hidden");
       symbolBarState.textContent = isHidden ? "OFF" : "ON";
@@ -2233,7 +2227,6 @@ button {
       refreshEditorHighlights();
     });
 
-    // Word Wrap Toggle
     menuWordWrapBtn.addEventListener("click", () => {
       const wrapped = codeEditor.classList.toggle("word-wrap");
       highlightBackdrop.classList.toggle("word-wrap", wrapped);
@@ -2245,51 +2238,47 @@ button {
       toggleWaDropdown(false);
     });
 
-    menuImportZipBtn.addEventListener("click", () => {
+    menuSaveZipBtn.addEventListener("click", async () => {
       toggleWaDropdown(false);
-      pendingUploadFolder = "";
-      zipInput.click();
+      if (!(await ensureJSZip())) return;
+      const zip = new JSZip();
+      for (const [path, content] of Object.entries(files)) {
+        if (typeof content === "string" && content.startsWith("data:")) {
+          zip.file(path, content.split(",")[1], { base64: true });
+        } else {
+          zip.file(path, content);
+        }
+      }
+      for (const folder of emptyFolders) zip.folder(folder);
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pikaedit-section-${currentSlotIndex + 1}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
     });
 
-    menuSaveZipBtn.addEventListener("click", () => {
-      toggleWaDropdown(false);
-      exportZipBtn.click();
-    });
-
-    menuResetBtn.addEventListener("click", () => {
-      toggleWaDropdown(false);
-      resetBtn.click();
-    });
-
-    // =========================================================================
-    // SYNCED HIGHLIGHT ENGINE (FIND & REPLACE + VISUAL DELETE RANGE)
-    // =========================================================================
-    let activeHighlightMode = null; // 'find' | 'range' | null
-
-    // Find & Replace State
+    // Synced Highlight Engine (Find & Replace + Visual Delete Range)
+    let activeHighlightMode = null;
     let findMatches = [];
     let findActiveIndex = -1;
     let isReplaceAllMode = false;
 
-    // Delete Range State
     let rangeStartMatches = [];
     let rangeStartIndex = -1;
     let rangeEndMatches = [];
     let rangeEndIndex = -1;
 
     function escapeHtml(str) {
-      return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     function scrollEditorToIndex(charIndex) {
       if (charIndex < 0 || codeEditor.classList.contains("hidden")) return;
       const textBefore = codeEditor.value.slice(0, charIndex);
       const lineNum = textBefore.split("\n").length - 1;
-      const lineHeight = 13 * 1.55;
-      const targetScrollTop = Math.max(0, lineNum * lineHeight - codeEditor.clientHeight * 0.35);
+      const targetScrollTop = Math.max(0, lineNum * 20.15 - codeEditor.clientHeight * 0.35);
       codeEditor.scrollTop = targetScrollTop;
       highlightBackdrop.scrollTop = targetScrollTop;
       lineNumbers.scrollTop = targetScrollTop;
@@ -2307,7 +2296,6 @@ button {
       const sorted = [...ranges].sort((a, b) => a.start - b.start);
       let html = "";
       let cursor = 0;
-
       for (const r of sorted) {
         if (r.start < cursor) continue;
         html += escapeHtml(text.slice(cursor, r.start));
@@ -2333,30 +2321,25 @@ button {
         const ranges = [];
         const sQ = rangeStartInput.value;
         const eQ = rangeEndInput.value;
-
         rangeStartMatches.forEach((pos, idx) => {
-          ranges.push({
-            start: pos,
-            end: pos + sQ.length,
-            cls: idx === rangeStartIndex ? "hl-range-start" : "hl-match"
-          });
+          ranges.push({ start: pos, end: pos + sQ.length, cls: idx === rangeStartIndex ? "hl-range-start" : "hl-match" });
         });
-
         rangeEndMatches.forEach((pos, idx) => {
-          ranges.push({
-            start: pos,
-            end: pos + eQ.length,
-            cls: idx === rangeEndIndex ? "hl-range-end" : "hl-match"
-          });
+          ranges.push({ start: pos, end: pos + eQ.length, cls: idx === rangeEndIndex ? "hl-range-end" : "hl-match" });
         });
-
+        if (rangeStartIndex >= 0 && rangeEndIndex >= 0) {
+          const spanStart = rangeStartMatches[rangeStartIndex] + sQ.length;
+          const spanEnd = rangeEndMatches[rangeEndIndex];
+          if (spanEnd > spanStart) {
+            ranges.push({ start: spanStart, end: spanEnd, cls: "hl-range-span" });
+          }
+        }
         renderHighlightedRanges(ranges);
       } else {
         renderHighlightedRanges([]);
       }
     }
 
-    // --- FIND & REPLACE HANDLERS (Focus stays strictly inside input!) ---
     function openFindBar() {
       closeRangeBar();
       toggleWaDropdown(false);
@@ -2379,7 +2362,6 @@ button {
       const query = findInput.value;
       const text = codeEditor.value;
       findMatches = [];
-
       if (query) {
         const lowerText = text.toLowerCase();
         const lowerQ = query.toLowerCase();
@@ -2389,18 +2371,13 @@ button {
           pos += Math.max(1, lowerQ.length);
         }
       }
-
       if (findMatches.length === 0) {
         findActiveIndex = -1;
         findCount.textContent = "0/0";
         refreshEditorHighlights();
         return;
       }
-
-      if (resetIdx || findActiveIndex < 0 || findActiveIndex >= findMatches.length) {
-        findActiveIndex = 0;
-      }
-
+      if (resetIdx || findActiveIndex < 0 || findActiveIndex >= findMatches.length) findActiveIndex = 0;
       findCount.textContent = `${findActiveIndex + 1}/${findMatches.length}`;
       refreshEditorHighlights();
       scrollEditorToIndex(findMatches[findActiveIndex]);
@@ -2416,20 +2393,9 @@ button {
 
     menuFindBtn.addEventListener("click", openFindBar);
     closeFindBtn.addEventListener("click", closeFindBar);
-
-    findInput.addEventListener("input", () => {
-      updateFindMatches(true);
-    });
-
-    findPrevBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      stepFindMatch(-1);
-    });
-
-    findNextBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      stepFindMatch(1);
-    });
+    findInput.addEventListener("input", () => updateFindMatches(true));
+    findPrevBtn.addEventListener("click", (e) => { e.preventDefault(); stepFindMatch(-1); });
+    findNextBtn.addEventListener("click", (e) => { e.preventDefault(); stepFindMatch(1); });
 
     replaceAllToggleBtn.addEventListener("click", () => {
       isReplaceAllMode = !isReplaceAllMode;
@@ -2438,16 +2404,13 @@ button {
 
     toggleReplaceRowBtn.addEventListener("click", () => {
       const wasHidden = replaceRow.classList.toggle("hidden");
-      if (!wasHidden) {
-        replaceInput.focus();
-      }
+      if (!wasHidden) replaceInput.focus();
     });
 
     executeReplaceBtn.addEventListener("click", () => {
       const query = findInput.value;
       const replacement = replaceInput.value;
       if (!query || findMatches.length === 0) return;
-
       const text = codeEditor.value;
       recordUndoSnapshot(activeFile, text);
 
@@ -2459,7 +2422,6 @@ button {
         const pos = findMatches[findActiveIndex];
         updated = text.slice(0, pos) + replacement + text.slice(pos + query.length);
       }
-
       codeEditor.value = updated;
       files[activeFile] = updated;
       recordUndoSnapshot(activeFile, updated);
@@ -2468,7 +2430,7 @@ button {
       updateFindMatches(false);
     });
 
-    // --- VISUAL DELETE RANGE HANDLERS ---
+    // Visual Delete Range Handlers
     function openRangeBar() {
       closeFindBar();
       toggleWaDropdown(false);
@@ -2500,7 +2462,6 @@ button {
       const q = rangeStartInput.value;
       const text = codeEditor.value;
       rangeStartMatches = [];
-
       if (q) {
         let pos = 0;
         while ((pos = text.indexOf(q, pos)) !== -1) {
@@ -2508,18 +2469,14 @@ button {
           pos += Math.max(1, q.length);
         }
       }
-
       if (rangeStartMatches.length === 0) {
         rangeStartIndex = -1;
         rangeStartCount.textContent = "0/0";
       } else {
-        if (resetIdx || rangeStartIndex < 0 || rangeStartIndex >= rangeStartMatches.length) {
-          rangeStartIndex = 0;
-        }
+        if (resetIdx || rangeStartIndex < 0 || rangeStartIndex >= rangeStartMatches.length) rangeStartIndex = 0;
         rangeStartCount.textContent = `${rangeStartIndex + 1}/${rangeStartMatches.length}`;
         scrollEditorToIndex(rangeStartMatches[rangeStartIndex]);
       }
-
       updateRangeEndMatches(true);
     }
 
@@ -2528,12 +2485,9 @@ button {
       const startQ = rangeStartInput.value;
       const text = codeEditor.value;
       rangeEndMatches = [];
-
-      const searchAfter =
-        rangeStartIndex >= 0 && rangeStartIndex < rangeStartMatches.length
-          ? rangeStartMatches[rangeStartIndex] + startQ.length
-          : 0;
-
+      const searchAfter = rangeStartIndex >= 0 && rangeStartIndex < rangeStartMatches.length
+        ? rangeStartMatches[rangeStartIndex] + startQ.length
+        : 0;
       if (endQ) {
         let pos = searchAfter;
         while ((pos = text.indexOf(endQ, pos)) !== -1) {
@@ -2541,20 +2495,16 @@ button {
           pos += Math.max(1, endQ.length);
         }
       }
-
       if (rangeEndMatches.length === 0) {
         rangeEndIndex = -1;
         rangeEndCount.textContent = "0/0";
       } else {
-        if (resetIdx || rangeEndIndex < 0 || rangeEndIndex >= rangeEndMatches.length) {
-          rangeEndIndex = 0;
-        }
+        if (resetIdx || rangeEndIndex < 0 || rangeEndIndex >= rangeEndMatches.length) rangeEndIndex = 0;
         rangeEndCount.textContent = `${rangeEndIndex + 1}/${rangeEndMatches.length}`;
         if (!rangeEndRow.classList.contains("hidden")) {
           scrollEditorToIndex(rangeEndMatches[rangeEndIndex]);
         }
       }
-
       refreshEditorHighlights();
     }
 
@@ -2602,7 +2552,6 @@ button {
     executeRangeDeleteBtn.addEventListener("click", async () => {
       const startQ = rangeStartInput.value;
       const endQ = rangeEndInput.value;
-
       if (!startQ || rangeStartIndex < 0 || !endQ || rangeEndIndex < 0) {
         await showCozyPopup({
           title: "Select Start & End",
@@ -2614,27 +2563,22 @@ button {
         });
         return;
       }
-
       const startPos = rangeStartMatches[rangeStartIndex];
       const endPos = rangeEndMatches[rangeEndIndex] + endQ.length;
       if (endPos <= startPos) return;
 
       const text = codeEditor.value;
       recordUndoSnapshot(activeFile, text);
-
       const updated = text.slice(0, startPos) + text.slice(endPos);
       codeEditor.value = updated;
       files[activeFile] = updated;
       recordUndoSnapshot(activeFile, updated);
-
       saveWorkspace();
       updateLineNumbers(true);
       closeRangeBar();
     });
 
-    // =========================================================================
-    // COZY POPUP DIALOGS
-    // =========================================================================
+    // Cozy Dialogs
     function showCozyPopup({
       title = "Notice",
       message = "",
@@ -2651,11 +2595,9 @@ button {
         cozyMessage.textContent = message;
         cozyIcon.textContent = icon;
         cozyIcon.className = `cozy-icon ${tone}`;
-
         cozyConfirmBtn.textContent = confirmText;
         cozyConfirmBtn.className = `cozy-btn confirm ${tone === "danger" ? "danger" : ""}`;
         cozyCancelBtn.textContent = cancelText;
-
         cozyCancelBtn.classList.toggle("hidden", mode === "alert");
 
         if (mode === "prompt") {
@@ -2667,7 +2609,6 @@ button {
         }
 
         cozyModalOverlay.classList.remove("hidden");
-
         if (mode === "prompt") {
           setTimeout(() => {
             cozyInput.focus();
@@ -2688,48 +2629,31 @@ button {
 
         cozyConfirmBtn.onclick = () => cleanup(mode === "prompt" ? cozyInput.value : true);
         cozyCancelBtn.onclick = () => cleanup(mode === "prompt" ? null : false);
-        cozyModalOverlay.onclick = (e) => {
-          if (e.target === cozyModalOverlay) cleanup(mode === "prompt" ? null : false);
-        };
+        cozyModalOverlay.onclick = (e) => { if (e.target === cozyModalOverlay) cleanup(mode === "prompt" ? null : false); };
         cozyInput.onkeydown = (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            cleanup(cozyInput.value);
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            cleanup(null);
-          }
+          if (e.key === "Enter") { e.preventDefault(); cleanup(cozyInput.value); }
+          else if (e.key === "Escape") { e.preventDefault(); cleanup(null); }
         };
       });
     }
 
+    let jszipLoadPromise = null;
     async function ensureJSZip() {
       if (typeof window.JSZip !== "undefined") return true;
-      await showCozyPopup({
-        title: "JSZip Loading",
-        message: "Please wait a moment or check internet connection for ZIP support.",
-        icon: "📦",
-        tone: "warn",
-        mode: "alert",
-        confirmText: "OK"
-      });
-      return false;
+      if (!jszipLoadPromise) {
+        jszipLoadPromise = new Promise((resolve) => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+          s.async = true;
+          s.onload = () => resolve(typeof window.JSZip !== "undefined");
+          s.onerror = () => { jszipLoadPromise = null; resolve(false); };
+          document.head.appendChild(s);
+        });
+      }
+      return await jszipLoadPromise;
     }
 
-    // =========================================================================
-    // FILE TABS, SWIPE GESTURES, LONG-PRESS MENU & MULTI-SELECT
-    // =========================================================================
-    function getFileIcon(fileName) {
-      const lower = fileName.toLowerCase();
-      if (lower.endsWith(".html") || lower.endsWith(".htm")) return "🌐";
-      if (lower.endsWith(".css")) return "🎨";
-      if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "⚡";
-      if (lower.endsWith(".json")) return "📋";
-      if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"].some((ext) => lower.endsWith(ext))) return "🖼️";
-      if ([".mp3", ".wav", ".ogg", ".m4a", ".aac"].some((ext) => lower.endsWith(ext))) return "🎵";
-      return "📄";
-    }
-
+    // Explorer Tree, Swipe Gestures & Long-Press Menu
     function renderQuickTabs() {
       fileTabsBar.innerHTML = "";
       const priority = ["index.html", "style.css", "script.js"];
@@ -2777,7 +2701,6 @@ button {
         const anyFolderHtml = folderKeys.find((k) => k.toLowerCase().endsWith(".html"));
         if (anyFolderHtml) return anyFolderHtml;
       }
-
       const rootIndex = keys.find((k) => k.toLowerCase() === "index.html");
       if (rootIndex) return rootIndex;
       const nestedIndex = keys.find((k) => k.toLowerCase().endsWith("/index.html"));
@@ -2785,22 +2708,29 @@ button {
       return keys.find((k) => k.toLowerCase().endsWith(".html")) || null;
     }
 
+    function getFileIcon(fileName) {
+      const lower = fileName.toLowerCase();
+      if (lower.endsWith(".html") || lower.endsWith(".htm")) return "🌐";
+      if (lower.endsWith(".css")) return "🎨";
+      if (lower.endsWith(".js") || lower.endsWith(".mjs")) return "⚡";
+      if (lower.endsWith(".json")) return "📋";
+      if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"].some((ext) => lower.endsWith(ext))) return "🖼️";
+      if ([".mp3", ".wav", ".ogg", ".m4a", ".aac"].some((ext) => lower.endsWith(ext))) return "🎵";
+      return "📄";
+    }
+
     function buildTreeStructure() {
       const root = { folders: {}, files: [] };
-
       for (const folderPath of emptyFolders) {
         const parts = folderPath.split("/").filter(Boolean);
         let node = root;
         let currentPath = "";
         for (const part of parts) {
           currentPath = currentPath ? `${currentPath}/${part}` : part;
-          if (!node.folders[part]) {
-            node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
-          }
+          if (!node.folders[part]) node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
           node = node.folders[part];
         }
       }
-
       for (const filePath of Object.keys(files)) {
         const parts = filePath.split("/").filter(Boolean);
         const fileName = parts.pop();
@@ -2808,18 +2738,14 @@ button {
         let currentPath = "";
         for (const part of parts) {
           currentPath = currentPath ? `${currentPath}/${part}` : part;
-          if (!node.folders[part]) {
-            node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
-          }
+          if (!node.folders[part]) node.folders[part] = { name: part, path: currentPath, folders: {}, files: [] };
           node = node.folders[part];
         }
         node.files.push({ name: fileName, path: filePath });
       }
-
       return root;
     }
 
-    // Multi-Select Helpers
     function enterMultiSelectMode(initialPath = null) {
       isMultiSelectMode = true;
       selectedPaths.clear();
@@ -2855,29 +2781,20 @@ button {
           emptyFolders = emptyFolders.filter((f) => f !== p && !f.startsWith(prefix));
         }
       }
-
-      if (Object.keys(files).length === 0) {
-        files["index.html"] = "";
-      }
-      if (!(activeFile in files)) {
-        activeFile = findEntryHtml() || Object.keys(files)[0];
-      }
-
+      if (Object.keys(files).length === 0) files["index.html"] = "";
+      if (!(activeFile in files)) activeFile = findEntryHtml() || Object.keys(files)[0];
       exitMultiSelectMode();
       await persistNow();
       openFile(activeFile);
     });
 
-    // Long-Press Context Menu in File Area
     let longPressTimer = null;
     let longPressTargetPath = null;
 
     function showFileAreaContextMenu(x, y, targetPath = null) {
       longPressTargetPath = targetPath;
-      const menuW = 180;
-      const menuH = 132;
-      const clampedX = Math.min(Math.max(10, x), window.innerWidth - menuW - 10);
-      const clampedY = Math.min(Math.max(50, y), window.innerHeight - menuH - 10);
+      const clampedX = Math.min(Math.max(10, x), window.innerWidth - 190);
+      const clampedY = Math.min(Math.max(50, y), window.innerHeight - 142);
       fileAreaContextMenu.style.left = `${clampedX}px`;
       fileAreaContextMenu.style.top = `${clampedY}px`;
       fileAreaContextMenu.classList.remove("hidden");
@@ -2899,12 +2816,6 @@ button {
 
     ctxCancelBtn.addEventListener("click", hideFileAreaContextMenu);
 
-    // Swipe Gestures + Long Press inside fileTreeEl
-    // - Swipe left anywhere in file area => Open/Create next independent Section
-    // - Swipe left on a row (or right swipe on row) => Quick visual delete when swiping row fast, while general left swipe opens next section!
-    // Let's make row swipe-to-delete trigger on fast row swipe when not creating new section, OR swipe left anywhere in file area opens next section cleanly:
-    // Specifically per spec: "Swipe left -> New" opens/creates next independent workspace section when swiping left in the file list box;
-    // and swiping a file/folder row right (or quick-delete) deletes it immediately without confirmation dialog!
     let treeGestureState = null;
 
     fileTreeEl.addEventListener("touchstart", (e) => {
@@ -2940,9 +2851,7 @@ button {
       treeGestureState.lastX = t.clientX;
       treeGestureState.lastY = t.clientY;
 
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-        clearTimeout(longPressTimer);
-      }
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) clearTimeout(longPressTimer);
 
       if (!treeGestureState.lockedAxis) {
         if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
@@ -2951,17 +2860,15 @@ button {
 
       if (treeGestureState.lockedAxis !== "x" || treeGestureState.longPressed) return;
 
-      if (dx < 0) {
-        // Swipe left anywhere in file box => slide feedback toward next Section
-        const clamped = Math.max(dx * 0.35, -36);
-        fileTreeEl.style.transition = "none";
-        fileTreeEl.style.transform = `translateX(${clamped}px)`;
-      } else if (dx > 0 && treeGestureState.row) {
-        // Swipe right on a file/folder row => red delete slide feedback
+      if (dx > 0 && treeGestureState.row) {
         const clamped = Math.min(dx, 110);
         treeGestureState.row.style.transition = "none";
         treeGestureState.row.style.transform = `translateX(${clamped}px)`;
         treeGestureState.row.classList.add("swipe-deleting");
+      } else if (dx < 0) {
+        const clamped = Math.max(dx * 0.35, -36);
+        fileTreeEl.style.transition = "none";
+        fileTreeEl.style.transform = `translateX(${clamped}px)`;
       }
     }, { passive: true });
 
@@ -2985,39 +2892,22 @@ button {
       if (state.longPressed) return;
       if (state.lockedAxis !== "x" || Math.abs(dx) < 62 || Math.abs(dx) < Math.abs(dy)) return;
 
-      const blockClickOnce = (ev) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-      };
+      const blockClickOnce = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
       fileTreeEl.addEventListener("click", blockClickOnce, { capture: true, once: true });
       setTimeout(() => fileTreeEl.removeEventListener("click", blockClickOnce, { capture: true }), 80);
 
-      if (dx < -62) {
-        // Swipe left anywhere in file box => open/create next independent section
-        await switchWorkspaceSlot(currentSlotIndex + 1, true);
-      } else if (dx > 62 && state.row) {
-        // Swipe right on row => instant delete without confirmation dialog
+      if (dx > 62 && state.row) {
         const deleteType = state.row.getAttribute("data-swipe-type");
         const deletePath = state.row.getAttribute("data-swipe-path");
-        if (deleteType === "file" && deletePath) {
-          await deleteFileInstant(deletePath);
-        } else if (deleteType === "folder" && deletePath) {
-          await deleteFolderInstant(deletePath);
-        }
+        if (deleteType === "file" && deletePath) await deleteFileInstant(deletePath);
+        else if (deleteType === "folder" && deletePath) await deleteFolderInstant(deletePath);
+      } else if (dx < -62) {
+        await switchWorkspaceSlot(currentSlotIndex + 1, true);
       }
-    });
-
-    // Desktop right-click support for the same context menu
-    fileTreeEl.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      const row = e.target.closest(".tree-row");
-      const targetPath = row ? row.getAttribute("data-swipe-path") : null;
-      showFileAreaContextMenu(e.clientX, e.clientY, targetPath);
     });
 
     function renderTreeNodes(node, depth = 0) {
       const fragment = document.createDocumentFragment();
-
       const folderNames = Object.keys(node.folders).sort((a, b) => a.localeCompare(b));
       for (const fName of folderNames) {
         const folder = node.folders[fName];
@@ -3058,11 +2948,7 @@ button {
         const addInsideBtn = document.createElement("button");
         addInsideBtn.className = "row-mini-btn plus-btn";
         addInsideBtn.textContent = "+";
-        addInsideBtn.title = `Folder actions for ${folder.path}`;
-        addInsideBtn.onclick = (e) => {
-          e.stopPropagation();
-          openFolderActionSheet(folder.path);
-        };
+        addInsideBtn.onclick = (e) => { e.stopPropagation(); openFolderActionSheet(folder.path); };
 
         row.appendChild(left);
         row.appendChild(addInsideBtn);
@@ -3081,9 +2967,7 @@ button {
         };
 
         fragment.appendChild(row);
-        if (isExpanded) {
-          fragment.appendChild(renderTreeNodes(folder, depth + 1));
-        }
+        if (isExpanded) fragment.appendChild(renderTreeNodes(folder, depth + 1));
       }
 
       const priority = ["index.html", "style.css", "script.js"];
@@ -3127,7 +3011,6 @@ button {
           <span class="file-name">${fileObj.name}</span>
         `;
         left.appendChild(labelSpan);
-
         row.appendChild(left);
 
         row.onclick = () => {
@@ -3156,67 +3039,35 @@ button {
       updateSlotBarUI();
     }
 
-    // =========================================================================
-    // FOLDER '+' BOTTOM ACTION SHEET
-    // =========================================================================
+    // Folder Sheet & File Operations
     function openFolderActionSheet(folderPath) {
       sheetTargetFolder = folderPath;
       sheetFolderTitle.textContent = folderPath;
       folderSheetOverlay.classList.remove("hidden");
     }
 
-    function closeFolderActionSheet() {
-      folderSheetOverlay.classList.add("hidden");
-    }
-
+    function closeFolderActionSheet() { folderSheetOverlay.classList.add("hidden"); }
     closeSheetBtn.addEventListener("click", closeFolderActionSheet);
-    folderSheetOverlay.addEventListener("click", (e) => {
-      if (e.target === folderSheetOverlay) closeFolderActionSheet();
-    });
+    folderSheetOverlay.addEventListener("click", (e) => { if (e.target === folderSheetOverlay) closeFolderActionSheet(); });
 
-    sheetNewFileBtn.addEventListener("click", () => {
-      const folder = sheetTargetFolder;
-      closeFolderActionSheet();
-      promptCreateFile(`${folder}/`);
-    });
-
-    sheetNewFolderBtn.addEventListener("click", () => {
-      const folder = sheetTargetFolder;
-      closeFolderActionSheet();
-      promptCreateFolder(`${folder}/`);
-    });
-
-    sheetImportZipBtn.addEventListener("click", () => {
-      pendingUploadFolder = sheetTargetFolder;
-      closeFolderActionSheet();
-      zipInput.click();
-    });
-
-    sheetUploadFilesBtn.addEventListener("click", () => {
-      pendingUploadFolder = sheetTargetFolder;
-      closeFolderActionSheet();
-      assetUploadInput.click();
-    });
+    sheetNewFileBtn.addEventListener("click", () => { const f = sheetTargetFolder; closeFolderActionSheet(); promptCreateFile(`${f}/`); });
+    sheetNewFolderBtn.addEventListener("click", () => { const f = sheetTargetFolder; closeFolderActionSheet(); promptCreateFolder(`${f}/`); });
+    sheetImportZipBtn.addEventListener("click", () => { pendingUploadFolder = sheetTargetFolder; closeFolderActionSheet(); zipInput.click(); });
+    sheetUploadFilesBtn.addEventListener("click", () => { pendingUploadFolder = sheetTargetFolder; closeFolderActionSheet(); assetUploadInput.click(); });
 
     sheetExportZipBtn.addEventListener("click", async () => {
       if (!(await ensureJSZip())) return;
       const folder = sheetTargetFolder;
       closeFolderActionSheet();
-
       const prefix = folder + "/";
-      const folderFileEntries = Object.entries(files).filter(([p]) => p.startsWith(prefix));
-      if (folderFileEntries.length === 0) return;
-
+      const entries = Object.entries(files).filter(([p]) => p.startsWith(prefix));
+      if (entries.length === 0) return;
       const zip = new JSZip();
-      for (const [path, content] of folderFileEntries) {
+      for (const [path, content] of entries) {
         const rel = path.slice(prefix.length);
-        if (typeof content === "string" && content.startsWith("data:")) {
-          zip.file(rel, content.split(",")[1], { base64: true });
-        } else {
-          zip.file(rel, content);
-        }
+        if (typeof content === "string" && content.startsWith("data:")) zip.file(rel, content.split(",")[1], { base64: true });
+        else zip.file(rel, content);
       }
-
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -3229,10 +3080,9 @@ button {
     sheetRenameFolderBtn.addEventListener("click", async () => {
       const oldFolder = sheetTargetFolder;
       closeFolderActionSheet();
-
       const newName = await showCozyPopup({
         title: "Rename Folder",
-        message: "Enter new folder name:",
+        message: "Enter new folder path or name:",
         icon: "✏️",
         mode: "prompt",
         defaultValue: oldFolder,
@@ -3241,7 +3091,6 @@ button {
       if (!newName) return;
       const cleanNew = newName.trim().replace(/^\/+|\/+$/g, "").replace(/\/+/g, "/");
       if (!cleanNew || cleanNew === oldFolder) return;
-
       const oldPrefix = oldFolder + "/";
       const newPrefix = cleanNew + "/";
       const updatedFiles = {};
@@ -3249,21 +3098,14 @@ button {
         updatedFiles[path.startsWith(oldPrefix) ? newPrefix + path.slice(oldPrefix.length) : path] = content;
       }
       files = updatedFiles;
-      emptyFolders = emptyFolders.map((f) =>
-        f === oldFolder ? cleanNew : f.startsWith(oldPrefix) ? newPrefix + f.slice(oldPrefix.length) : f
-      );
-      if (activeFile.startsWith(oldPrefix)) {
-        activeFile = newPrefix + activeFile.slice(oldPrefix.length);
-      }
+      emptyFolders = emptyFolders.map((f) => (f === oldFolder ? cleanNew : f.startsWith(oldPrefix) ? newPrefix + f.slice(oldPrefix.length) : f));
+      if (activeFile.startsWith(oldPrefix)) activeFile = newPrefix + activeFile.slice(oldPrefix.length);
       expandedFolders.delete(oldFolder);
       expandedFolders.add(cleanNew);
       await persistNow();
       openFile(activeFile);
     });
 
-    // =========================================================================
-    // FILE EDITOR & INSTANT DELETE
-    // =========================================================================
     function openFile(fileName, { syncTree = true, persist = true } = {}) {
       if (!(fileName in files)) return;
       activeFile = fileName;
@@ -3272,7 +3114,6 @@ button {
       const content = files[fileName];
       assetAudio.pause();
       assetAudio.src = "";
-
       const isWrapped = codeEditor.classList.contains("word-wrap");
 
       if (typeof content === "string" && content.startsWith("data:image/")) {
@@ -3327,8 +3168,8 @@ button {
 
     async function deleteFolderInstant(folderPath) {
       const prefix = folderPath + "/";
-      for (const f of Object.keys(files)) {
-        if (f.startsWith(prefix)) delete files[f];
+      for (const f of Object.keys(files).filter((k) => k.startsWith(prefix))) {
+        delete files[f];
       }
       emptyFolders = emptyFolders.filter((f) => f !== folderPath && !f.startsWith(prefix));
       if (Object.keys(files).length === 0) files["index.html"] = "";
@@ -3346,11 +3187,8 @@ button {
       }
       if (!force && count === lastLineCount) return;
       lastLineCount = count;
-
       let out = "";
-      for (let i = 1; i <= count; i++) {
-        out += i === count ? String(i) : i + "\n";
-      }
+      for (let i = 1; i <= count; i++) out += i === count ? String(i) : i + "\n";
       lineNumbers.textContent = out;
     }
 
@@ -3358,18 +3196,12 @@ button {
       files[activeFile] = codeEditor.value;
       saveWorkspace();
       updateLineNumbers();
-      if (activeHighlightMode === "find") {
-        updateFindMatches(false);
-      } else if (activeHighlightMode === "range") {
-        updateRangeStartMatches(false);
-      } else {
-        refreshEditorHighlights();
-      }
+      if (activeHighlightMode === "find") updateFindMatches(false);
+      else if (activeHighlightMode === "range") updateRangeStartMatches(false);
+      else refreshEditorHighlights();
 
       clearTimeout(lastSnapshotTimer);
-      lastSnapshotTimer = setTimeout(() => {
-        recordUndoSnapshot(activeFile, codeEditor.value);
-      }, 450);
+      lastSnapshotTimer = setTimeout(() => recordUndoSnapshot(activeFile, codeEditor.value), 450);
     });
 
     codeEditor.addEventListener("scroll", () => {
@@ -3434,19 +3266,13 @@ button {
 
     newFileBtn.addEventListener("click", () => promptCreateFile(""));
     newFolderBtn.addEventListener("click", () => promptCreateFolder(""));
-    rootImportZipBtn.addEventListener("click", () => {
-      pendingUploadFolder = "";
-      zipInput.click();
-    });
-    rootUploadBtn.addEventListener("click", () => {
-      pendingUploadFolder = "";
-      assetUploadInput.click();
-    });
+    rootImportZipBtn.addEventListener("click", () => { pendingUploadFolder = ""; zipInput.click(); });
+    rootUploadBtn.addEventListener("click", () => { pendingUploadFolder = ""; assetUploadInput.click(); });
 
     resetBtn.addEventListener("click", async () => {
       const confirmed = await showCozyPopup({
         title: "Reset Current Section?",
-        message: "Clear files in this section and restore blank index.html, style.css, script.js?",
+        message: "Clear files in this section and leave blank index.html, style.css, and script.js.",
         icon: "🧹",
         tone: "danger",
         mode: "confirm",
@@ -3460,9 +3286,7 @@ button {
       openFile("index.html");
     });
 
-    // =========================================================================
-    // ZIP IMPORT, MULTI-FILE UPLOAD & PROJECT EXPORT
-    // =========================================================================
+    // ZIP Import & File Upload
     const TEXT_EXTS = new Set([
       ".html", ".htm", ".css", ".js", ".mjs", ".cjs", ".ts", ".jsx", ".tsx",
       ".json", ".svg", ".txt", ".md", ".xml", ".csv", ".yml", ".yaml", ".ini", ".env"
@@ -3472,27 +3296,11 @@ button {
       const lower = path.toLowerCase();
       const ext = lower.includes(".") ? "." + lower.split(".").pop() : "";
       const map = {
-        ".html": "text/html",
-        ".htm": "text/html",
-        ".css": "text/css",
-        ".js": "application/javascript",
-        ".mjs": "application/javascript",
-        ".json": "application/json",
-        ".svg": "image/svg+xml",
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".webp": "image/webp",
-        ".ico": "image/x-icon",
-        ".bmp": "image/bmp",
-        ".mp3": "audio/mpeg",
-        ".wav": "audio/wav",
-        ".ogg": "audio/ogg",
-        ".m4a": "audio/mp4",
-        ".aac": "audio/aac",
-        ".mp4": "video/mp4",
-        ".webm": "video/webm"
+        ".html": "text/html", ".htm": "text/html", ".css": "text/css", ".js": "application/javascript",
+        ".mjs": "application/javascript", ".json": "application/json", ".svg": "image/svg+xml",
+        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+        ".webp": "image/webp", ".ico": "image/x-icon", ".mp3": "audio/mpeg", ".wav": "audio/wav",
+        ".ogg": "audio/ogg", ".m4a": "audio/mp4"
       };
       return map[ext] || "application/octet-stream";
     }
@@ -3508,50 +3316,25 @@ button {
       const targetFolder = pendingUploadFolder;
       pendingUploadFolder = "";
       if (!file) return;
-
-      if (!(await ensureJSZip())) {
-        zipInput.value = "";
-        return;
-      }
+      if (!(await ensureJSZip())) { zipInput.value = ""; return; }
 
       try {
         const zip = await JSZip.loadAsync(file);
         const validPaths = [];
-        const folderPathsFromZip = [];
-
-        zip.forEach((relativePath, entry) => {
-          const normalized = relativePath.replace(/\\/g, "/").replace(/^\/+/, "");
-          if (!normalized || normalized.startsWith("__MACOSX/") || normalized.endsWith(".DS_Store")) return;
-          if (entry.dir) folderPathsFromZip.push(normalized.replace(/\/+$/, ""));
-          else validPaths.push(normalized);
+        zip.forEach((rel, entry) => {
+          const norm = rel.replace(/\\/g, "/").replace(/^\/+/, "");
+          if (!norm || norm.startsWith("__MACOSX/") || norm.endsWith(".DS_Store") || entry.dir) return;
+          validPaths.push(norm);
         });
-
         if (validPaths.length === 0) return;
 
         let commonPrefix = "";
         const firstParts = validPaths[0].split("/");
-        if (firstParts.length > 1) {
-          const candidate = firstParts[0] + "/";
-          if (validPaths.every((p) => p.startsWith(candidate))) commonPrefix = candidate;
+        if (firstParts.length > 1 && validPaths.every((p) => p.startsWith(firstParts[0] + "/"))) {
+          commonPrefix = firstParts[0] + "/";
         }
 
         const folderPrefix = targetFolder ? `${targetFolder}/` : "";
-        let addedCount = 0;
-
-        if (targetFolder) {
-          expandParentsOf(targetFolder + "/dummy");
-          expandedFolders.add(targetFolder);
-          if (!emptyFolders.includes(targetFolder)) emptyFolders.push(targetFolder);
-        }
-
-        for (const fDir of folderPathsFromZip) {
-          const stripped = commonPrefix && fDir.startsWith(commonPrefix) ? fDir.slice(commonPrefix.length) : fDir;
-          if (!stripped) continue;
-          const mappedDir = folderPrefix + stripped;
-          expandParentsOf(mappedDir + "/dummy");
-          expandedFolders.add(mappedDir);
-        }
-
         for (const fullPath of validPaths) {
           const cleanPath = commonPrefix ? fullPath.slice(commonPrefix.length) : fullPath;
           if (!cleanPath) continue;
@@ -3559,11 +3342,10 @@ button {
           if (isTextFile(cleanPath)) {
             files[destPath] = await zip.file(fullPath).async("string");
           } else {
-            const base64 = await zip.file(fullPath).async("base64");
-            files[destPath] = `data:${getMimeType(cleanPath)};base64,${base64}`;
+            const b64 = await zip.file(fullPath).async("base64");
+            files[destPath] = `data:${getMimeType(cleanPath)};base64,${b64}`;
           }
           expandParentsOf(destPath);
-          addedCount++;
         }
 
         const entryHtml = findEntryHtml(targetFolder) || Object.keys(files)[0];
@@ -3571,23 +3353,6 @@ button {
         openFile(entryHtml, { syncTree: true, persist: false });
         await persistNow();
         closeMobileSidebar();
-
-        await showCozyPopup({
-          title: "ZIP Imported",
-          message: `Loaded ${addedCount} file${addedCount === 1 ? "" : "s"} into Section ${currentSlotIndex + 1}.`,
-          icon: "🎉",
-          mode: "alert",
-          confirmText: "OK"
-        });
-      } catch (err) {
-        await showCozyPopup({
-          title: "Import Error",
-          message: "Could not read ZIP file: " + err.message,
-          icon: "⚠️",
-          tone: "danger",
-          mode: "alert",
-          confirmText: "OK"
-        });
       } finally {
         zipInput.value = "";
       }
@@ -3598,107 +3363,61 @@ button {
       const targetFolder = pendingUploadFolder;
       pendingUploadFolder = "";
       if (selectedFiles.length === 0) return;
-
       const folderPrefix = targetFolder ? `${targetFolder}/` : "";
-      let lastAddedPath = "";
-
+      let lastPath = "";
       for (const f of selectedFiles) {
-        const destPath = folderPrefix + f.name;
-        if (isTextFile(f.name)) {
-          files[destPath] = await f.text();
-        } else {
-          files[destPath] = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(f);
-          });
-        }
-        lastAddedPath = destPath;
+        const dest = folderPrefix + f.name;
+        files[dest] = isTextFile(f.name)
+          ? await f.text()
+          : await new Promise((res, rej) => {
+              const r = new FileReader();
+              r.onload = () => res(r.result);
+              r.onerror = rej;
+              r.readAsDataURL(f);
+            });
+        lastPath = dest;
       }
-
-      if (targetFolder) expandedFolders.add(targetFolder);
-      if (lastAddedPath) {
-        activeFile = lastAddedPath;
-        openFile(lastAddedPath, { syncTree: true, persist: false });
-      }
+      if (lastPath) openFile(lastPath, { syncTree: true, persist: false });
       await persistNow();
       closeMobileSidebar();
       assetUploadInput.value = "";
     });
 
-    exportZipBtn.addEventListener("click", async () => {
-      if (!(await ensureJSZip())) return;
-      const zip = new JSZip();
-
-      for (const [path, content] of Object.entries(files)) {
-        if (typeof content === "string" && content.startsWith("data:")) {
-          zip.file(path, content.split(",")[1], { base64: true });
-        } else {
-          zip.file(path, content);
-        }
-      }
-      for (const folder of emptyFolders) zip.folder(folder);
-
-      const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `pikaedit-section-${currentSlotIndex + 1}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-
-    // =========================================================================
-    // VIRTUAL FILE SYSTEM (VFS) & LIVE RUNNER WITH FULL ASSET RESOLUTION
-    // =========================================================================
+    // VFS & Live Preview Runner
     function resolvePath(baseFile, targetPath) {
       if (!targetPath) return null;
       const trimmed = targetPath.trim();
       if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-
       const cleanTarget = trimmed.split("?")[0].split("#")[0].replace(/\\/g, "/");
       if (!cleanTarget) return null;
-
       const baseParts = baseFile.split("/");
       baseParts.pop();
-
-      const workingParts = cleanTarget.startsWith("/") ? [] : baseParts;
-      const targetParts = cleanTarget.replace(/^\/+/, "").split("/");
-
-      for (const part of targetParts) {
+      const work = cleanTarget.startsWith("/") ? [] : baseParts;
+      for (const part of cleanTarget.replace(/^\/+/, "").split("/")) {
         if (part === "." || part === "") continue;
-        if (part === "..") {
-          if (workingParts.length > 0) workingParts.pop();
-        } else {
-          workingParts.push(part);
-        }
+        if (part === "..") { if (work.length > 0) work.pop(); }
+        else work.push(part);
       }
-      return workingParts.join("/");
+      return work.join("/");
     }
 
     function lookupAssetUrl(resolvedPath, assetMap) {
       if (!resolvedPath) return null;
       if (assetMap[resolvedPath]) return assetMap[resolvedPath];
-
       const lower = resolvedPath.toLowerCase();
-      const exactLowerKey = Object.keys(assetMap).find((k) => k.toLowerCase() === lower);
-      if (exactLowerKey) return assetMap[exactLowerKey];
-
-      const targetBase = lower.split("/").pop();
-      if (targetBase) {
-        const baseMatchKey = Object.keys(assetMap).find((k) => k.toLowerCase().split("/").pop() === targetBase);
-        if (baseMatchKey) return assetMap[baseMatchKey];
+      const exact = Object.keys(assetMap).find((k) => k.toLowerCase() === lower);
+      if (exact) return assetMap[exact];
+      const base = lower.split("/").pop();
+      if (base) {
+        const fallback = Object.keys(assetMap).find((k) => k.toLowerCase().split("/").pop() === base);
+        if (fallback) return assetMap[fallback];
       }
       return null;
     }
 
     function isMediaOrImageFile(path) {
       const lower = path.toLowerCase();
-      return [
-        ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp",
-        ".mp3", ".wav", ".ogg", ".m4a", ".aac", ".mp4", ".webm"
-      ].some((ext) => lower.endsWith(ext));
+      return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".mp3", ".wav", ".ogg", ".m4a"].some((ext) => lower.endsWith(ext));
     }
 
     function toSafeDataUrl(content, path) {
@@ -3706,313 +3425,32 @@ button {
       const mime = getMimeType(path);
       try {
         const bytes = new TextEncoder().encode(String(content || ""));
-        let binary = "";
+        let bin = "";
         for (let i = 0; i < bytes.length; i += 0x8000) {
-          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+          bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
         }
-        return `data:${mime};base64,${btoa(binary)}`;
+        return `data:${mime};base64,${btoa(bin)}`;
       } catch (e) {
         return `data:${mime};charset=utf-8,${encodeURIComponent(String(content || ""))}`;
       }
     }
 
     function rewriteCssContent(cssText, cssFilePath, assetMap) {
-      let rewritten = cssText.replace(/url\(\s*(['"]?)([^'"()]+)\1\s*\)/gi, (match, quote, rawUrl) => {
-        const resolved = resolvePath(cssFilePath, rawUrl);
-        const mapped = lookupAssetUrl(resolved, assetMap);
+      return cssText.replace(/url\(\s*(['"]?)([^'"()]+)\1\s*\)/gi, (match, quote, rawUrl) => {
+        const mapped = lookupAssetUrl(resolvePath(cssFilePath, rawUrl), assetMap);
         return mapped ? `url("${mapped}")` : match;
       });
-      rewritten = rewritten.replace(/@import\s+(['"])([^'"]+)\1/gi, (match, quote, rawUrl) => {
-        const resolved = resolvePath(cssFilePath, rawUrl);
-        const mapped = lookupAssetUrl(resolved, assetMap);
-        return mapped ? `@import "${mapped}"` : match;
-      });
-      return rewritten;
     }
 
     function revokePreviousBlobs() {
-      for (const url of activeBlobUrls) {
-        try { URL.revokeObjectURL(url); } catch (e) {}
-      }
+      for (const u of activeBlobUrls) { try { URL.revokeObjectURL(u); } catch (e) {} }
       activeBlobUrls = [];
     }
 
-    function revokeBrowserTabBlobs() {
-      for (const url of browserTabBlobUrls) {
-        try { URL.revokeObjectURL(url); } catch (e) {}
-      }
-      browserTabBlobUrls = [];
-    }
-
     function createTrackedBlobUrl(content, mime, bucket = activeBlobUrls) {
-      const blob = new Blob([content], { type: mime });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(new Blob([content], { type: mime }));
       bucket.push(url);
       return url;
-    }
-
-    function findContextualHtml() {
-      if (activeFile.toLowerCase().endsWith(".html")) return activeFile;
-      const parts = activeFile.split("/");
-      parts.pop();
-      while (parts.length > 0) {
-        const found = findEntryHtml(parts.join("/"));
-        if (found) return found;
-        parts.pop();
-      }
-      return findEntryHtml("");
-    }
-
-    function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
-      let htmlContent = files[htmlPath];
-
-      htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (match, attrs, cssBody) => {
-        return `<style${attrs}>${rewriteCssContent(cssBody, htmlPath, assetMap)}</style>`;
-      });
-
-      htmlContent = htmlContent.replace(/\bstyle\s*=\s*(["'])([\s\S]*?)\1/gi, (match, quote, styleBody) => {
-        if (!/url\s*\(/i.test(styleBody)) return match;
-        return `style=${quote}${rewriteCssContent(styleBody, htmlPath, assetMap)}${quote}`;
-      });
-
-      htmlContent = htmlContent.replace(
-        /\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi,
-        (match, attr, quote, rawPath) => {
-          const resolved = resolvePath(htmlPath, rawPath);
-          if (!resolved) return match;
-          if (attr.toLowerCase() === "href" && resolved.toLowerCase().endsWith(".html")) {
-            if (isExternalBrowser && htmlPagesMap) {
-              const mappedPage = lookupAssetUrl(resolved, htmlPagesMap);
-              if (mappedPage) return `${attr}=${quote}${mappedPage}${quote}`;
-            }
-            return match;
-          }
-          const mapped = lookupAssetUrl(resolved, assetMap);
-          return mapped ? `${attr}=${quote}${mapped}${quote}` : match;
-        }
-      );
-
-      const vfsPayload = JSON.stringify({
-        baseFile: htmlPath,
-        assets: assetMap,
-        pages: htmlPagesMap || {},
-        external: isExternalBrowser
-      });
-
-      const runtimeHook = `
-      <script>
-        (function() {
-          const VFS = ${vfsPayload};
-
-          function resolveFromMap(raw, mapObj) {
-            if (!raw || typeof raw !== 'string') return null;
-            const trimmed = raw.trim();
-            if (/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(trimmed)) return null;
-            const clean = trimmed.split('?')[0].split('#')[0].replace(/\\\\/g, '/');
-            if (!clean) return null;
-            const baseParts = VFS.baseFile.split('/');
-            baseParts.pop();
-            const work = clean.startsWith('/') ? [] : baseParts;
-            const parts = clean.replace(/^\\/+/, '').split('/');
-            for (const p of parts) {
-              if (p === '.' || p === '') continue;
-              if (p === '..') { if (work.length > 0) work.pop(); }
-              else { work.push(p); }
-            }
-            const resolved = work.join('/');
-            if (mapObj[resolved]) return mapObj[resolved];
-            const lower = resolved.toLowerCase();
-            const key = Object.keys(mapObj).find(k => k.toLowerCase() === lower);
-            if (key) return mapObj[key];
-            const baseName = lower.split('/').pop();
-            if (baseName) {
-              const fallbackKey = Object.keys(mapObj).find(k => k.toLowerCase().split('/').pop() === baseName);
-              if (fallbackKey) return mapObj[fallbackKey];
-            }
-            return null;
-          }
-
-          function resolveVfsPath(raw) {
-            return resolveFromMap(raw, VFS.assets);
-          }
-
-          function applyStyleBackgroundFix(el) {
-            if (!el || !el.style) return;
-            const bg = el.style.backgroundImage;
-            if (bg && bg.includes('url(')) {
-              const fixedBg = bg.replace(/url\\(\\s*(['"]?)([^'"()]+)\\1\\s*\\)/gi, (m, q, innerUrl) => {
-                const mapped = resolveVfsPath(innerUrl);
-                return mapped ? 'url("' + mapped + '")' : m;
-              });
-              if (fixedBg !== bg) el.style.backgroundImage = fixedBg;
-            }
-          }
-
-          const origFetch = window.fetch;
-          if (origFetch) {
-            window.fetch = function(input, init) {
-              if (typeof input === 'string') {
-                const mapped = resolveVfsPath(input);
-                if (mapped) input = mapped;
-              }
-              return origFetch.call(this, input, init);
-            };
-          }
-
-          const origXhrOpen = XMLHttpRequest.prototype.open;
-          XMLHttpRequest.prototype.open = function(method, url) {
-            if (typeof url === 'string') {
-              const mapped = resolveVfsPath(url);
-              if (mapped) arguments[1] = mapped;
-            }
-            return origXhrOpen.apply(this, arguments);
-          };
-
-          const OrigAudio = window.Audio;
-          if (OrigAudio) {
-            window.Audio = function(src) {
-              const mapped = resolveVfsPath(src);
-              return new OrigAudio(mapped || src);
-            };
-            window.Audio.prototype = OrigAudio.prototype;
-          }
-
-          function hookSrcProperty(Proto) {
-            if (!Proto) return;
-            const desc = Object.getOwnPropertyDescriptor(Proto, 'src');
-            if (desc && desc.set) {
-              Object.defineProperty(Proto, 'src', {
-                get: desc.get,
-                set: function(val) {
-                  const mapped = resolveVfsPath(val);
-                  return desc.set.call(this, mapped || val);
-                },
-                configurable: true
-              });
-            }
-          }
-          hookSrcProperty(HTMLImageElement.prototype);
-          hookSrcProperty(HTMLMediaElement.prototype);
-          hookSrcProperty(HTMLScriptElement.prototype);
-          hookSrcProperty(HTMLSourceElement.prototype);
-
-          const origSetAttr = Element.prototype.setAttribute;
-          Element.prototype.setAttribute = function(name, val) {
-            if (typeof name === 'string' && typeof val === 'string') {
-              if (/^(src|poster)$/i.test(name)) {
-                const mapped = resolveVfsPath(val);
-                if (mapped) val = mapped;
-              } else if (/^href$/i.test(name)) {
-                if (val.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-                  const pageUrl = resolveFromMap(val, VFS.pages);
-                  if (pageUrl) val = pageUrl;
-                } else {
-                  const mapped = resolveVfsPath(val);
-                  if (mapped) val = mapped;
-                }
-              } else if (/^style$/i.test(name) && /url\\s*\\(/i.test(val)) {
-                val = val.replace(/url\\(\\s*(['"]?)([^'"()]+)\\1\\s*\\)/gi, (m, q, innerUrl) => {
-                  const mapped = resolveVfsPath(innerUrl);
-                  return mapped ? 'url("' + mapped + '")' : m;
-                });
-              }
-            }
-            const res = origSetAttr.call(this, name, val);
-            if (typeof name === 'string' && /^style$/i.test(name)) applyStyleBackgroundFix(this);
-            return res;
-          };
-
-          if (window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype.drawImage) {
-            const origDrawImage = CanvasRenderingContext2D.prototype.drawImage;
-            CanvasRenderingContext2D.prototype.drawImage = function(img) {
-              if (img && img.tagName === 'IMG') {
-                const rawAttr = img.getAttribute && img.getAttribute('src');
-                if (rawAttr && !/^data:|^blob:|^https?:/i.test(rawAttr.trim())) {
-                  const mapped = resolveVfsPath(rawAttr);
-                  if (mapped && img.src !== mapped) img.src = mapped;
-                }
-              }
-              return origDrawImage.apply(this, arguments);
-            };
-          }
-
-          if (window.MutationObserver) {
-            const mo = new MutationObserver((mutations) => {
-              for (const mut of mutations) {
-                for (const node of mut.addedNodes || []) {
-                  if (!node || node.nodeType !== 1) continue;
-                  if (node.tagName === 'IMG') {
-                    const rawSrc = node.getAttribute('src');
-                    if (rawSrc && !/^data:|^blob:|^https?:/i.test(rawSrc.trim())) {
-                      const mapped = resolveVfsPath(rawSrc);
-                      if (mapped && node.src !== mapped) node.src = mapped;
-                    }
-                  }
-                  applyStyleBackgroundFix(node);
-                  const imgs = node.querySelectorAll ? node.querySelectorAll('img[src]') : [];
-                  for (const childImg of imgs) {
-                    const rawChildSrc = childImg.getAttribute('src');
-                    if (rawChildSrc && !/^data:|^blob:|^https?:/i.test(rawChildSrc.trim())) {
-                      const mappedChild = resolveVfsPath(rawChildSrc);
-                      if (mappedChild && childImg.src !== mappedChild) childImg.src = mappedChild;
-                    }
-                  }
-                }
-              }
-            });
-            document.addEventListener('DOMContentLoaded', () => {
-              if (document.body) mo.observe(document.body, { childList: true, subtree: true });
-            });
-          }
-
-          document.addEventListener('click', function(e) {
-            const anchor = e.target.closest ? e.target.closest('a[href]') : null;
-            if (!anchor) return;
-            const href = anchor.getAttribute('href');
-            if (!href || /^(https?:|mailto:|tel:|#|javascript:|blob:)/i.test(href)) return;
-            if (href.split('?')[0].split('#')[0].toLowerCase().endsWith('.html')) {
-              if (!VFS.external && window.parent && window.parent !== window) {
-                e.preventDefault();
-                window.parent.postMessage({ source: 'pikaedit-navigate', from: VFS.baseFile, to: href }, '*');
-              } else if (VFS.external) {
-                const pageUrl = resolveFromMap(href, VFS.pages);
-                if (pageUrl) {
-                  e.preventDefault();
-                  window.location.href = pageUrl;
-                }
-              }
-            }
-          });
-
-          if (!VFS.external && window.parent && window.parent !== window) {
-            const send = (type, args) => {
-              try {
-                const formatted = Array.from(args).map(a => {
-                  if (a instanceof Error) return a.name + ': ' + a.message;
-                  if (typeof a === 'object' && a !== null) return JSON.stringify(a);
-                  return String(a);
-                }).join(' ');
-                window.parent.postMessage({ source: 'pikaedit-console', type, message: formatted }, '*');
-              } catch(e) {}
-            };
-            const origLog = console.log;
-            const origWarn = console.warn;
-            const origError = console.error;
-            console.log = function() { send('info', arguments); origLog.apply(console, arguments); };
-            console.warn = function() { send('warn', arguments); origWarn.apply(console, arguments); };
-            console.error = function() { send('error', arguments); origError.apply(console, arguments); };
-            window.onerror = function(msg, src, line) { send('error', [msg + ' (Line ' + line + ')']); };
-          }
-        })();
-      <\/script>`;
-
-      if (/<head[^>]*>/i.test(htmlContent)) {
-        htmlContent = htmlContent.replace(/<head[^>]*>/i, (match) => match + runtimeHook);
-      } else {
-        htmlContent = runtimeHook + htmlContent;
-      }
-
-      return htmlContent;
     }
 
     function buildAssetMap(bucket) {
@@ -4020,113 +3458,101 @@ button {
       for (const [path, content] of Object.entries(files)) {
         const lower = path.toLowerCase();
         if (lower.endsWith(".css") || lower.endsWith(".html") || lower.endsWith(".htm")) continue;
-        if (isMediaOrImageFile(path)) {
-          assetMap[path] = toSafeDataUrl(content, path);
-        } else if (typeof content === "string" && content.startsWith("data:")) {
-          assetMap[path] = content;
-        } else {
-          assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
-        }
+        if (isMediaOrImageFile(path)) assetMap[path] = toSafeDataUrl(content, path);
+        else if (typeof content === "string" && content.startsWith("data:")) assetMap[path] = content;
+        else assetMap[path] = createTrackedBlobUrl(content, getMimeType(path), bucket);
       }
-
       for (const [path, content] of Object.entries(files)) {
         if (!path.toLowerCase().endsWith(".css")) continue;
-        const rewrittenCss = rewriteCssContent(content, path, assetMap);
-        assetMap[path] = createTrackedBlobUrl(rewrittenCss, "text/css", bucket);
+        assetMap[path] = createTrackedBlobUrl(rewriteCssContent(content, path, assetMap), "text/css", bucket);
       }
-
       return assetMap;
     }
 
-    async function runProject(overrideHtmlFile = null) {
+    function compileSingleHtmlDocument(htmlPath, assetMap, htmlPagesMap = null, isExternalBrowser = false) {
+      let htmlContent = files[htmlPath] || "";
+      htmlContent = htmlContent.replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (m, attrs, css) => `<style${attrs}>${rewriteCssContent(css, htmlPath, assetMap)}</style>`);
+      htmlContent = htmlContent.replace(/\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi, (m, attr, q, raw) => {
+        const resolved = resolvePath(htmlPath, raw);
+        if (!resolved) return m;
+        const mapped = lookupAssetUrl(resolved, assetMap);
+        return mapped ? `${attr}=${q}${mapped}${q}` : m;
+      });
+
+      const vfsPayload = JSON.stringify({ baseFile: htmlPath, assets: assetMap, pages: htmlPagesMap || {}, external: isExternalBrowser });
+      const runtimeHook = `<script>(function(){
+        const VFS=${vfsPayload};
+        function resMap(raw,map){
+          if(!raw||typeof raw!=='string')return null;
+          const t=raw.trim();if(/^(https?:|data:|blob:|#|mailto:|tel:|javascript:)/i.test(t))return null;
+          const clean=t.split('?')[0].split('#')[0].replace(/\\\\/g,'/');
+          const bp=VFS.baseFile.split('/');bp.pop();
+          const w=clean.startsWith('/')?[]:bp;
+          for(const p of clean.replace(/^\\/+/, '').split('/')){if(p&&p!=='.'){if(p==='..')w.pop();else w.push(p);}}
+          const r=w.join('/');if(map[r])return map[r];
+          const l=r.toLowerCase();const k=Object.keys(map).find(x=>x.toLowerCase()===l);if(k)return map[k];
+          const b=l.split('/').pop();const fb=b&&Object.keys(map).find(x=>x.toLowerCase().split('/').pop()===b);
+          return fb?map[fb]:null;
+        }
+        const origFetch=window.fetch;if(origFetch)window.fetch=function(i,init){if(typeof i==='string'){const m=resMap(i,VFS.assets);if(m)i=m;}return origFetch.call(this,i,init);};
+        function hookSrc(P){const d=P&&Object.getOwnPropertyDescriptor(P,'src');if(d&&d.set)Object.defineProperty(P,'src',{get:d.get,set:function(v){return d.set.call(this,resMap(v,VFS.assets)||v);},configurable:true});}
+        hookSrc(HTMLImageElement.prototype);hookSrc(HTMLMediaElement.prototype);hookSrc(HTMLScriptElement.prototype);
+        const origSet=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if(typeof v==='string'&&/^(src|href)$/i.test(n)){const m=resMap(v,VFS.assets);if(m)v=m;}return origSet.call(this,n,v);};
+        if(!VFS.external&&window.parent!==window){
+          const send=(type,args)=>{try{window.parent.postMessage({source:'pikaedit-console',type,message:Array.from(args).map(a=>typeof a==='object'?JSON.stringify(a):String(a)).join(' ')},'*');}catch(e){}};
+          const l=console.log,w=console.warn,er=console.error;
+          console.log=function(){send('info',arguments);l.apply(console,arguments);};
+          console.warn=function(){send('warn',arguments);w.apply(console,arguments);};
+          console.error=function(){send('error',arguments);er.apply(console,arguments);};
+        }
+      })();<\/script>`;
+
+      return /<head[^>]*>/i.test(htmlContent)
+        ? htmlContent.replace(/<head[^>]*>/i, (m) => m + runtimeHook)
+        : runtimeHook + htmlContent;
+    }
+
+    async function runProject(overrideHtml = null) {
       clearConsole();
       revokePreviousBlobs();
       togglePreviewDropdown(false);
 
-      const targetHtmlFile =
-        (overrideHtmlFile && files[overrideHtmlFile] !== undefined ? overrideHtmlFile : null) ||
-        findContextualHtml();
+      const targetHtml = (overrideHtml && files[overrideHtml] !== undefined ? overrideHtml : null) || findEntryHtml("");
+      if (!targetHtml) return;
 
-      if (!targetHtmlFile) {
-        await showCozyPopup({
-          title: "No HTML File",
-          message: "Please create or select an .html file in this section to run.",
-          icon: "📄",
-          tone: "warn",
-          mode: "alert",
-          confirmText: "OK"
-        });
-        return;
-      }
-
-      currentPreviewHtmlFile = targetHtmlFile;
-      previewTitle.textContent = targetHtmlFile;
-
+      currentPreviewHtmlFile = targetHtml;
+      previewTitle.textContent = targetHtml;
       const assetMap = buildAssetMap(activeBlobUrls);
-      const htmlContent = compileSingleHtmlDocument(targetHtmlFile, assetMap, null, false);
-
-      previewFrame.srcdoc = htmlContent;
+      previewFrame.srcdoc = compileSingleHtmlDocument(targetHtml, assetMap, null, false);
       previewModal.classList.remove("hidden");
     }
 
-    async function openInDeviceBrowser() {
-      togglePreviewDropdown(false);
-      const targetHtmlFile =
-        (currentPreviewHtmlFile && files[currentPreviewHtmlFile] !== undefined ? currentPreviewHtmlFile : null) ||
-        findContextualHtml();
-      if (!targetHtmlFile) return;
-
-      revokeBrowserTabBlobs();
-      const assetMap = buildAssetMap(browserTabBlobUrls);
-      const htmlPagesMap = {};
-      const allHtmlPaths = Object.keys(files).filter((p) => {
-        const l = p.toLowerCase();
-        return l.endsWith(".html") || l.endsWith(".htm");
-      });
-
-      for (const hPath of allHtmlPaths) {
-        const initialHtml = compileSingleHtmlDocument(hPath, assetMap, null, true);
-        htmlPagesMap[hPath] = createTrackedBlobUrl(initialHtml, "text/html", browserTabBlobUrls);
-      }
-      for (const hPath of allHtmlPaths) {
-        const linkedHtml = compileSingleHtmlDocument(hPath, assetMap, htmlPagesMap, true);
-        const oldUrl = htmlPagesMap[hPath];
-        htmlPagesMap[hPath] = createTrackedBlobUrl(linkedHtml, "text/html", browserTabBlobUrls);
-        try { URL.revokeObjectURL(oldUrl); } catch (e) {}
-      }
-
-      const entryUrl = htmlPagesMap[targetHtmlFile];
-      if (!entryUrl) return;
-      const link = document.createElement("a");
-      link.href = entryUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    }
-
-    openBrowserBtn.addEventListener("click", openInDeviceBrowser);
     runBtn.addEventListener("click", () => runProject());
     reloadPreviewBtn.addEventListener("click", () => runProject(currentPreviewHtmlFile));
-
     closePreviewBtn.addEventListener("click", () => {
       togglePreviewDropdown(false);
       exitAppFullscreen();
       previewModal.classList.add("hidden");
       previewFrame.srcdoc = "";
-      currentPreviewHtmlFile = null;
       revokePreviousBlobs();
     });
 
-    window.addEventListener("message", (event) => {
-      if (!event.data) return;
-      if (event.data.source === "pikaedit-console") {
-        appendConsoleLog(event.data.type, event.data.message);
-      } else if (event.data.source === "pikaedit-navigate") {
-        const targetPath = resolvePath(event.data.from, event.data.to);
-        if (targetPath && files[targetPath] !== undefined) runProject(targetPath);
-        else appendConsoleLog("warn", `Page not found: ${event.data.to}`);
+    openBrowserBtn.addEventListener("click", () => {
+      togglePreviewDropdown(false);
+      const targetHtml = currentPreviewHtmlFile || findEntryHtml("");
+      if (!targetHtml) return;
+      const assetMap = buildAssetMap(browserTabBlobUrls);
+      const htmlPagesMap = {};
+      for (const h of Object.keys(files).filter((p) => p.toLowerCase().endsWith(".html"))) {
+        htmlPagesMap[h] = createTrackedBlobUrl(compileSingleHtmlDocument(h, assetMap, null, true), "text/html", browserTabBlobUrls);
+      }
+      const url = htmlPagesMap[targetHtml];
+      if (url) window.open(url, "_blank", "noopener");
+    });
+
+    window.addEventListener("message", (e) => {
+      if (e.data && e.data.source === "pikaedit-console") {
+        appendConsoleLog(e.data.type, e.data.message);
       }
     });
 
@@ -4149,9 +3575,6 @@ button {
     consoleToggleBtn.addEventListener("click", () => consolePanel.classList.toggle("hidden"));
     clearConsoleBtn.addEventListener("click", clearConsole);
 
-    // =========================================================================
-    // MOBILE DRAWER & BOOTSTRAP
-    // =========================================================================
     function closeMobileSidebar() {
       sidebar.classList.remove("open");
       sidebarBackdrop.classList.remove("show");
@@ -4169,25 +3592,15 @@ button {
         idbGet("workspaces_v2"),
         idbGet("currentSlotIndex_v2")
       ]);
-
       if (Array.isArray(savedWorkspaces) && savedWorkspaces.length > 0) {
         workspaces = savedWorkspaces;
-        currentSlotIndex =
-          typeof savedSlotIdx === "number" && savedSlotIdx >= 0 && savedSlotIdx < workspaces.length
-            ? savedSlotIdx
-            : 0;
+        currentSlotIndex = typeof savedSlotIdx === "number" && savedSlotIdx < workspaces.length ? savedSlotIdx : 0;
         const slot = workspaces[currentSlotIndex];
         files = slot.files && Object.keys(slot.files).length > 0 ? slot.files : { "index.html": "" };
         emptyFolders = Array.isArray(slot.emptyFolders) ? slot.emptyFolders : [];
         expandedFolders = new Set(Array.isArray(slot.expandedFolders) ? slot.expandedFolders : []);
-        activeFile =
-          slot.activeFile && slot.activeFile in files
-            ? slot.activeFile
-            : findEntryHtml() || Object.keys(files)[0];
-      } else {
-        await persistNow();
+        activeFile = slot.activeFile && slot.activeFile in files ? slot.activeFile : findEntryHtml() || Object.keys(files)[0];
       }
-
       updateSlotBarUI();
       openFile(activeFile, { syncTree: true, persist: false });
     })();
